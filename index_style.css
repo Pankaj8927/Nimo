@@ -1,0 +1,1183 @@
+/* Reels Section */
+.reels-section {
+    margin-bottom: 30px;
+}
+
+.reel-grid {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.reel-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.reel-grid::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.reel-item {
+    flex: 0 0 120px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.reel-image-container {
+    position: relative;
+    width: 120px;
+    height: 160px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #000;
+}
+
+.reel-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.9;
+}
+
+.play-icon {
+    transition: opacity 0.2s ease;
+}
+
+.reel-item:hover .play-icon {
+    opacity: 1;
+}
+
+.reel-info p {
+    font-size: 0.9rem;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.reel-info small {
+    font-size: 0.75rem;
+}
+
+/* Reel Viewer Modal */
+#reelViewerModal .modal-content {
+    background: #000;
+    color: #fff;
+    border: none;
+}
+
+#reelViewerModal .modal-header {
+    border-bottom: none;
+}
+
+#reelViewerModal .modal-body {
+    height: 90vh;
+    padding: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#reelViewerModal .reel-content {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.reel-actions {
+    z-index: 10;
+}
+
+.reel-actions .btn {
+    transition: transform 0.2s ease;
+}
+
+.reel-actions .btn:hover {
+    transform: scale(1.1);
+}
+
+.btn-outline-primary {
+    background-color: white;
+    color: #007bff;
+    border-radius: 8px;
+    border: 1px solid #007bff;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 576px) {
+    .btn-outline-primary {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+}
+
+.add-friend-btn.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.friend-item {
+    transition: opacity 0.5s ease;
+}
+
+/* Upload Animation Styles */
+.upload-animation-container {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000;
+    text-align: center;
+}
+
+.upload-circle {
+    width: 80px;
+    height: 80px;
+    border: 6px solid #e0e4e8;
+    border-top: 6px solid #1e90ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+.upload-text {
+    margin-top: 15px;
+    font-size: 1.2rem;
+    color: #333;
+    font-family: 'Poppins', sans-serif;
+}
+
+.success-check {
+    display: none;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #28a745;
+    color: white;
+    font-size: 40px;
+    line-height: 80px;
+    margin: 0 auto;
+    animation: scaleIn 0.5s ease-out;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(0);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Your CSS remains unchanged */
+.friend-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.friend-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.friend {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.friend:hover {
+    background: #f1f7ff;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    background: #28a745;
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+.status-indicator.online {
+    background: #28a745;
+}
+
+.status-indicator.offline {
+    background: #6c757d;
+}
+
+.chat-window {
+    transition: all 0.3s ease;
+}
+
+.chat-header {
+    background: #0084ff;
+}
+
+.chat-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px;
+    height: 380px;
+    overflow-y: auto;
+    background: #ECE5DD;
+    /* WhatsApp-like background */
+}
+
+.chat-message {
+    position: relative;
+    max-width: 70%;
+    margin: 5px 0;
+    border-radius: 7.5px;
+    font-size: 0.9rem;
+    word-wrap: break-word;
+    display: flex;
+    clear: both;
+    padding: 0;
+    /* Remove padding from outer div */
+}
+
+.chat-message.sent {
+    background: #DCF8C6;
+    /* WhatsApp's light green for sent */
+    color: #000;
+    justify-content: flex-end;
+    margin-left: auto;
+    margin-right: 10px;
+}
+
+.chat-message.received {
+    background: #FFFFFF;
+    color: #000;
+    margin-left: 10px;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
+}
+
+.message-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    /* Padding moved to wrapper */
+    width: 100%;
+}
+
+.message-content {
+    flex-grow: 1;
+    padding-right: 20px;
+    /* Space for three-dot menu */
+}
+
+.message-meta {
+    position: absolute;
+    bottom: 2px;
+    right: 8px;
+}
+
+.message-meta small {
+    font-size: 0.65rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+}
+
+.message-meta .ticks {
+    margin-left: 3px;
+    font-size: 0.8rem;
+    vertical-align: middle;
+}
+
+.message-meta .ticks i {
+    margin-left: 1px;
+}
+
+.message-meta .ticks.sent {
+    color: #999;
+    /* Grey for sent but unread */
+}
+
+.message-meta .ticks.read {
+    color: #00AFEF;
+    /* WhatsApp blue for read */
+}
+
+.message-options {
+    position: absolute;
+    top: 5px;
+    /* Position at the top */
+    right: 5px;
+}
+
+.three-dot-btn {
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    color: #666;
+    padding: 0 5px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    /* Hidden by default */
+    transition: opacity 0.2s ease;
+}
+
+.chat-message:hover .three-dot-btn {
+    opacity: 1;
+    /* Show on hover */
+}
+
+.three-dot-btn:hover {
+    color: #075E54;
+    /* WhatsApp teal */
+}
+
+.dropdown-menu {
+    background: #FFFFFF;
+    border: 1px solid #E8E8E8;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 5px 0;
+    min-width: 120px;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    font-size: 1rem;
+}
+
+.dropdown-item:hover {
+    background: #F0F0F0;
+    color: #075E54;
+}
+
+
+/* Chat Header */
+.chat-header {
+    background: #075E54;
+    /* WhatsApp's dark teal header color */
+}
+
+/* Chat Footer */
+.chat-footer {
+    padding: 10px;
+    background: #F0F0F0;
+    /* WhatsApp-like light grey */
+    border-radius: 0 0 15px 15px;
+    border-top: 1px solid #D9D9D9;
+}
+
+/* WhatsApp-style Input */
+.whatsapp-input {
+    border-radius: 20px;
+    background: #FFFFFF;
+    border: 1px solid #E8E8E8;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    box-shadow: none;
+    flex-grow: 1;
+}
+
+.whatsapp-input:focus {
+    border-color: #075E54;
+    /* WhatsApp teal */
+    box-shadow: 0 0 5px rgba(7, 94, 84, 0.3);
+    outline: none;
+}
+
+/* Icon Button Styling */
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-whatsapp {
+    background: #075E54;
+    /* WhatsApp teal */
+    color: #FFFFFF;
+    border: none;
+}
+
+.btn-whatsapp:hover {
+    background: #064D45;
+    /* Darker teal on hover */
+    transform: scale(1.1);
+}
+
+/* Dropdown Menu Styling */
+.dropdown-menu {
+    background: #FFFFFF;
+    border: 1px solid #E8E8E8;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 5px 0;
+    min-width: 150px;
+}
+
+.btn-whatsapp-dropdown {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 8px 15px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 0.9rem;
+    text-align: left;
+    transition: background-color 0.2s ease;
+}
+
+.btn-whatsapp-dropdown:hover {
+    background: #F0F0F0;
+    color: #075E54;
+}
+
+.btn-whatsapp-dropdown i {
+    margin-right: 10px;
+    font-size: 1.1rem;
+    color: #075E54;
+    /* WhatsApp teal for icons */
+}
+
+/* Icon Styling */
+.btn-whatsapp i,
+.btn-whatsapp-dropdown i {
+    font-size: 1.2rem;
+    transition: color 0.2s ease;
+}
+
+.btn-whatsapp:hover i {
+    color: #FFFFFF;
+}
+
+.btn-whatsapp-dropdown:hover i {
+    color: #064D45;
+    /* Darker teal on hover */
+}
+
+/* Media Preview */
+#mediaPreview {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+/* Emoji Picker Positioning */
+.emoji-picker {
+    position: absolute;
+    bottom: 60px;
+    right: 10px;
+    z-index: 1000;
+    background: #FFFFFF;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-bar {
+    position: relative;
+}
+
+/* .chat-footer input {
+            border-radius: 20px;
+        }
+
+        .chat-footer button {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+        } */
+
+.bg-gradient {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+}
+
+.story-actions {
+    z-index: 10;
+}
+
+.story-grid {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.story-item {
+    display: inline-block;
+    width: 80px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.story-image-container {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.story-image-container img,
+.story-image-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #1e90ff;
+}
+
+.upload-story-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    line-height: 1;
+}
+
+#storyViewerModal .modal-content {
+    background: #000;
+    color: #fff;
+    border: none;
+}
+
+#storyViewerModal .modal-header {
+    border-bottom: none;
+}
+
+#storyViewerModal .modal-body {
+    height: 90vh;
+    padding: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#storyViewerModal .story-content {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+#storyViewerModal .progress-container {
+    display: flex;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    gap: 5px;
+    z-index: 10;
+}
+
+#storyViewerModal .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+#storyViewerModal .progress {
+    height: 100%;
+    background: #fff;
+    width: 0;
+    border-radius: 2px;
+    transition: width linear;
+}
+
+#prevStoryBtn,
+#nextStoryBtn {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+#prevStoryBtn:hover,
+#nextStoryBtn:hover {
+    opacity: 1;
+}
+
+.story-actions .btn {
+    transition: transform 0.2s ease;
+}
+
+.story-actions .btn:hover {
+    transform: scale(1.1);
+}
+
+.like-btn {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+}
+
+.like-btn i.fa-heart {
+    transition: color 0.3s ease;
+    margin-right: 5px;
+}
+
+.like-btn:hover i.fa-heart:not(.fas) {
+    color: #ff4444;
+}
+
+.like-btn.liked i.fa-heart {
+    color: #ff0000;
+}
+
+.like-btn.liked:hover i.fa-heart {
+    color: #ff0000;
+}
+
+.like-btn.liked::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 0, 0, 0.5);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    animation: likeRipple 0.6s ease-out;
+    pointer-events: none;
+}
+
+.like-btn .confirmation-icon {
+    margin-left: 5px;
+    color: #ff0000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.like-btn.liked .confirmation-icon {
+    opacity: 1;
+}
+
+@keyframes likeRipple {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
+.post-header {
+    position: relative;
+}
+
+.three-dot-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    padding: 0;
+    line-height: 1;
+}
+
+.three-dot-btn:hover {
+    color: #1e90ff;
+}
+
+.dropdown-menu {
+    min-width: 100px;
+}
+
+.dropdown-item i {
+    margin-right: 5px;
+}
+
+.profile-pic-link {
+    text-decoration: none;
+    color: inherit;
+    display: inline-block;
+}
+
+.profile-pic-link:hover .profile-icon {
+    border-color: #1e90ff;
+}
+
+.search-bar {
+    position: relative;
+}
+
+.search-bar input {
+    padding-left: 35px;
+    width: 250px;
+}
+
+.search-bar i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+}
+
+#searchResults {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #fff;
+    border: 1px solid #e0e4e8;
+    border-radius: 5px;
+    width: 250px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-result-item {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #eceef1;
+    text-decoration: none;
+    color: #333;
+}
+
+.search-result-item:hover {
+    background: #f8f9fa;
+}
+
+.search-result-item img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.search-result-item span {
+    font-size: 0.9rem;
+}
+
+.friend-request-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eceef1;
+}
+
+.friend-request-item img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.friend-request-actions {
+    margin-left: auto;
+}
+
+.notification-dropdown .dropdown-item {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+.notification-dropdown .dropdown-item.unread {
+    background: #f1f7ff;
+}
+
+.friend-section {
+    margin-bottom: 20px;
+}
+
+.friend-grid {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.friend-grid::-webkit-scrollbar {
+    height: 6px;
+}
+
+.friend-grid::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.friend-item {
+    background-color: rgba(230, 238, 243, 0.81);
+    border-radius: 10px;
+    flex: 0 0 auto;
+    width: 100px;
+    text-align: center;
+    position: relative;
+}
+
+.friend-image-container {
+    position: relative;
+    width: 70px;
+    height: 70px;
+    margin: 0 auto;
+    transition: transform 0.2s ease;
+}
+
+.friend-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.friend-item:hover .friend-image-container {
+    transform: scale(1.05);
+}
+
+.friend-item p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.friend-item .add-friend-btn {
+    display: block;
+    margin: 5px auto 0;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background-color: #1e90ff;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    transition: background-color 0.2s ease;
+}
+
+.friend-item .add-friend-btn:hover {
+    background-color: #187bcd;
+}
+
+.friend-item .close-btn {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #666;
+    transition: all 0.2s ease;
+}
+
+.friend-item .close-btn:hover {
+    background: rgba(255, 0, 0, 0.9);
+    color: white;
+}
+
+/* new post 3 dot */
+
+/* post 3 dot end */
+.post-input-container {
+    margin-bottom: 30px;
+    max-width: 650px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.post-input {
+    background: #ffffff;
+    border: 1px solid #e0e4e8;
+    border-radius: 30px;
+    padding: 14px 18px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.post-input:hover,
+.post-input:focus-within {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    border-color: #1e90ff;
+}
+
+.profile-icon {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    transition: border-color 0.2s ease;
+}
+
+.post-input-field {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1.05rem;
+    color: #333;
+    padding: 0 12px;
+    flex-grow: 1;
+    font-family: 'Poppins', sans-serif;
+}
+
+.post-input-field::placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.photo-btn {
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-size: 1.3rem;
+    padding: 0 5px;
+    transition: color 0.2s ease;
+}
+
+.photo-btn:hover {
+    color: #1e90ff;
+}
+
+.post-item {
+    background: #ffffff;
+    border: 1px solid #e0e4e8;
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 25px;
+    max-width: 650px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.post-item:hover {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+.post-media {
+    width: 100%;
+    max-height: 600px;
+    object-fit: cover;
+    margin-top: 20px;
+    border-radius: 12px;
+    display: block;
+    overflow: hidden;
+}
+
+.post-actions {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid #eceef1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.post-actions .btn-link {
+    color: #555;
+    text-decoration: none;
+    padding: 6px 12px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.post-actions .btn-link:hover {
+    color: #1e90ff;
+}
+
+.post-actions span {
+    margin-left: 20px;
+    color: #666;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+}
+
+.post-actions span i {
+    margin-right: 5px;
+}
+
+.comment-section {
+    border-top: 1px solid #eceef1;
+    padding-top: 15px;
+}
+
+.comment-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.comment-item {
+    align-items: flex-start;
+}
+
+.comment-content {
+    border-radius: 15px;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+.comment-content strong {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.comment-content p {
+    font-size: 0.9rem;
+    margin-bottom: 2px;
+    color: #333;
+}
+
+.comment-content small {
+    font-size: 0.75rem;
+}
+
+.comment-input {
+    background: #f8f9fa;
+    border-radius: 20px;
+    padding: 8px 12px;
+}
+
+.comment-input-field {
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    flex-grow: 1;
+    outline: none;
+}
+
+.comment-input-field:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.comment-input-field::placeholder {
+    color: #999;
+}
+
+.comment-btn {
+    color: #555;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.comment-btn:hover {
+    color: #1e90ff;
+}
+
+.comment-btn i {
+    margin-right: 5px;
+}
+
+/* Scrollbar for comment list */
+.comment-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.comment-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+@media (max-width: 767px) {
+
+    .messages.fullscreen,
+    .chat-window.fullscreen {
+        position: fixed !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        top: 0 !important;
+        left: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        z-index: 2000;
+        box-shadow: none !important;
+    }
+
+
+}
+
+@media (min-width: 768px) {
+    .feed-area {
+        padding: 35px;
+    }
+
+    .post-input-container,
+    .post-item {
+        width: 100%;
+        max-width: 650px;
+    }
+
+    .post-item {
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
+.post-item p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 0;
+    word-wrap: break-word;
+}
+
+.post-item .d-flex strong {
+    font-size: 1.15rem;
+    color: #222;
+}
+
+.post-item .d-flex small {
+    font-size: 0.85rem;
+    color: #888;
+}

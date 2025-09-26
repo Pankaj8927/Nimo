@@ -1,0 +1,1214 @@
+<?php
+session_start();
+
+// Database connection
+require_once "db_connect.php";
+
+$db = Database::getInstance();
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+$error_message = '';
+$success_message = '';
+
+try {
+    // Fetch user profile
+    $stmt = $db->prepare("SELECT * FROM user_profiles WHERE user_id = :user_id");
+    $stmt->execute(['user_id' => $user_id]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC) ?: [
+        'name' => 'Default User',
+        'avatar_path' => 'uploads/avatars/default.jpg',
+        'bio' => 'No bio yet',
+        'location' => 'Not specified'
+    ];
+
+    // Fetch user's posts
+    $stmt = $db->prepare("
+        SELECT p.*, up.name, up.avatar_path 
+        FROM posts p 
+        LEFT JOIN user_profiles up ON p.user_id = up.user_id 
+        WHERE p.user_id = :user_id 
+        ORDER BY p.created_at DESC
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch story previews (latest story per user)
+    $stmt = $db->prepare("
+        SELECT s.id, s.user_id, s.media_path, s.media_type, s.created_at, up.name, up.avatar_path
+        FROM stories s
+        LEFT JOIN user_profiles up ON s.user_id = up.user_id
+        WHERE s.created_at > NOW() - INTERVAL 24 HOUR
+        AND s.id IN (
+            SELECT MAX(id)
+            FROM stories
+            WHERE created_at > NOW() - INTERVAL 24 HOUR
+            GROUP BY user_id
+        )
+        ORDER BY s.created_at DESC
+    ");
+    $stmt->execute();
+    $storyPreviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch all stories
+    $stmt = $db->prepare("
+        SELECT s.id, s.user_id, s.media_path, s.media_type, s.created_at, up.name, up.avatar_path 
+        FROM stories s 
+        LEFT JOIN user_profiles up ON s.user_id = up.user_id 
+        WHERE s.created_at > NOW() - INTERVAL 24 HOUR 
+        ORDER BY s.user_id, s.created_at ASC
+    ");
+    $stmt->execute();
+    $allStories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch like counts for stories
+    $stmt = $db->prepare("SELECT story_id, COUNT(*) as like_count FROM story_likes GROUP BY story_id");
+    $stmt->execute();
+    $likeCounts = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+    // Group stories by user
+    $storiesByUser = [];
+    foreach ($allStories as $story) {
+        $storiesByUser[$story['user_id']][] = [
+            'id' => (string)$story['id'],
+            'media_path' => $story['media_path'],
+            'media_type' => $story['media_type'],
+            'name' => $story['name'] ?: 'Unknown',
+            'avatar_path' => $story['avatar_path'] ?: 'uploads/avatars/default.jpg',
+            'like_count' => isset($likeCounts[$story['id']]) ? $likeCounts[$story['id']] : 0
+        ];
+    }
+    $storiesByUserJson = json_encode($storiesByUser);
+} catch (PDOException $e) {
+    $error_message = "Error fetching data: " . $e->getMessage();
+}
+
+// Handle story upload
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_story'])) {
+    try {
+        if (isset($_FILES['story_media']) && $_FILES['story_media']['error'] == 0) {
+            $upload_dir = "uploads/stories/";
+            if (!file_exists($upload_dir)) mkdir($upload_dir, 0777, true);
+            $media_path = $upload_dir . time() . "_" . basename($_FILES['story_media']['name']);
+            $mime_type = mime_content_type($_FILES['story_media']['tmp_name']);
+            $media_type = strpos($mime_type, 'image') === 0 ? 'image' : (strpos($mime_type, 'video') === 0 ? 'video' : '');
+
+            if (move_uploaded_file($_FILES['story_media']['tmp_name'], $media_path)) {
+                $stmt = $db->prepare("
+                    INSERT INTO stories (user_id, media_path, media_type, created_at)
+                    VALUES (:user_id, :media_path, :media_type, NOW())
+                ");
+                $stmt->execute([
+                    'user_id' => $user_id,
+                    'media_path' => $media_path,
+                    'media_type' => $media_type
+                ]);
+                $success_message = "Story uploaded successfully!";
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit;
+            }
+        }
+    } catch (PDOException $e) {
+        $error_message = "Error uploading story: " . $e->getMessage();
+    }
+}
+
+// Handle story like
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_story_like') {
+    header('Content-Type: application/json');
+    try {
+        $story_id = filter_input(INPUT_POST, 'story_id', FILTER_SANITIZE_NUMBER_INT);
+        $user_id = $_SESSION['user_id'];
+
+        $stmt = $db->prepare("SELECT COUNT(*) FROM story_likes WHERE story_id = :story_id AND user_id = :user_id");
+        $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+        $hasLiked = $stmt->fetchColumn();
+
+        if ($hasLiked) {
+            $stmt = $db->prepare("DELETE FROM story_likes WHERE story_id = :story_id AND user_id = :user_id");
+            $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+            $new_count = max(0, $likeCounts[$story_id] - 1);
+            $isLiked = false;
+        } else {
+            $stmt = $db->prepare("
+                INSERT INTO story_likes (story_id, user_id, created_at)
+                VALUES (:story_id, :user_id, NOW())
+            ");
+            $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+            $new_count = isset($likeCounts[$story_id]) ? $likeCounts[$story_id] + 1 : 1;
+            $isLiked = true;
+        }
+
+        echo json_encode(['success' => true, 'likes' => $new_count, 'isLiked' => $isLiked]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Handle story message
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_story_message') {
+    header('Content-Type: application/json');
+    try {
+        $story_id = filter_input(INPUT_POST, 'story_id', FILTER_SANITIZE_NUMBER_INT);
+        $message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
+
+        $stmt = $db->prepare("
+            INSERT INTO story_messages (story_id, sender_id, message, created_at)
+            VALUES (:story_id, :sender_id, :message, NOW())
+        ");
+        $stmt->execute([
+            'story_id' => $story_id,
+            'sender_id' => $user_id,
+            'message' => $message
+        ]);
+
+        echo json_encode(['success' => true]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Handle post submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['post_status'])) {
+    $content = filter_input(INPUT_POST, 'post_text', FILTER_SANITIZE_STRING);
+    $media_path = '';
+    $media_type = '';
+
+    if (isset($_FILES['post_media']) && $_FILES['post_media']['error'] == 0) {
+        $upload_dir = "uploads/posts/";
+        if (!file_exists($upload_dir)) mkdir($upload_dir, 0777, true);
+        $media_path = $upload_dir . time() . "_" . basename($_FILES['post_media']['name']);
+        move_uploaded_file($_FILES['post_media']['tmp_name'], $media_path);
+        $mime_type = mime_content_type($media_path);
+        $media_type = strpos($mime_type, 'image') === 0 ? 'image' : (strpos($mime_type, 'video') === 0 ? 'video' : '');
+    }
+
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO posts (user_id, content, media_path, media_type, created_at, likes)
+            VALUES (:user_id, :content, :media_path, :media_type, NOW(), 0)
+        ");
+        $stmt->execute([
+            'user_id' => $user_id,
+            'content' => $content,
+            'media_path' => $media_path,
+            'media_type' => $media_type
+        ]);
+        header("Location: " . $_SERVER['PHP_SELF']);
+        exit;
+    } catch (PDOException $e) {
+        $error_message = "Error creating post: " . $e->getMessage();
+    }
+}
+
+// Handle status (post) like toggle
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_like') {
+    header('Content-Type: application/json');
+    try {
+        $post_id = filter_input(INPUT_POST, 'post_id', FILTER_SANITIZE_NUMBER_INT);
+        $user_id = $_SESSION['user_id'];
+
+        $stmt = $db->prepare("SELECT COUNT(*) FROM post_likes WHERE post_id = :post_id AND user_id = :user_id");
+        $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+        $hasLiked = $stmt->fetchColumn();
+
+        if ($hasLiked) {
+            $stmt = $db->prepare("DELETE FROM post_likes WHERE post_id = :post_id AND user_id = :user_id");
+            $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+            $stmt = $db->prepare("UPDATE posts SET likes = GREATEST(likes - 1, 0) WHERE id = :post_id");
+            $stmt->execute(['post_id' => $post_id]);
+            $isLiked = false;
+        } else {
+            $stmt = $db->prepare("INSERT INTO post_likes (post_id, user_id, created_at) VALUES (:post_id, :user_id, NOW())");
+            $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+            $stmt = $db->prepare("UPDATE posts SET likes = likes + 1 WHERE id = :post_id");
+            $stmt->execute(['post_id' => $post_id]);
+            $isLiked = true;
+        }
+
+        $stmt = $db->prepare("SELECT likes FROM posts WHERE id = :post_id");
+        $stmt->execute(['post_id' => $post_id]);
+        $new_likes = $stmt->fetchColumn();
+
+        echo json_encode(['success' => true, 'likes' => $new_likes, 'isLiked' => $isLiked]);
+    } catch (PDOException $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// Fetch all posts
+$stmt = $db->prepare("
+    SELECT p.*, up.name, up.avatar_path 
+    FROM posts p 
+    LEFT JOIN user_profiles up ON p.user_id = up.user_id 
+    ORDER BY p.created_at DESC
+");
+$stmt->execute();
+$posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialFusion - Social Media Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .bg-gradient {
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+        }
+        .story-actions {
+            z-index: 10;
+        }
+        .story-grid {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .story-item {
+            display: inline-block;
+            width: 80px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .story-image-container {
+            position: relative;
+            width: 60px;
+            height: 60px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .story-image-container img, .story-image-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #1e90ff;
+        }
+        .upload-story-btn {
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        #storyViewerModal .modal-content {
+            background: #000;
+            color: #fff;
+            border: none;
+        }
+        #storyViewerModal .modal-header {
+            border-bottom: none;
+        }
+        #storyViewerModal .modal-body {
+            height: 90vh;
+            padding: 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #storyViewerModal .story-content {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #storyViewerModal .progress-container {
+            display: flex;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            gap: 5px;
+            z-index: 10;
+        }
+        #storyViewerModal .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        #storyViewerModal .progress {
+            height: 100%;
+            background: #fff;
+            width: 0;
+            border-radius: 2px;
+            transition: width linear;
+        }
+        #prevStoryBtn, #nextStoryBtn {
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        #prevStoryBtn:hover, #nextStoryBtn:hover {
+            opacity: 1;
+        }
+        .story-actions .btn {
+            transition: transform 0.2s ease;
+        }
+        .story-actions .btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Like button styles */
+        .like-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+        }
+        .like-btn i.fa-heart {
+            transition: color 0.3s ease;
+            margin-left: 5px;
+        }
+        .like-btn:hover i.fa-heart:not(.fas) {
+            color: #ff4444;
+        }
+        .like-btn.liked i.fa-heart {
+            color: #ff0000;
+        }
+        .like-btn.liked:hover i.fa-heart {
+            color: #ff0000;
+        }
+        .like-btn.liked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 0, 0, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: likeRipple 0.6s ease-out;
+            pointer-events: none;
+        }
+        .like-btn .confirmation-icon {
+            margin-left: 5px;
+            color: #ff0000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        @keyframes likeRipple {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* Rest of your CSS */
+        .friend-section { margin-bottom: 20px; }
+        .friend-grid { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        .friend-grid::-webkit-scrollbar { height: 6px; }
+        .friend-grid::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+        .friend-item { background-color: rgba(230, 238, 243, 0.81); border-radius: 10px; flex: 0 0 auto; width: 100px; text-align: center; position: relative; }
+        .friend-image-container { position: relative; width: 70px; height: 70px; margin: 0 auto; transition: transform 0.2s ease; }
+        .friend-image-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .friend-item:hover .friend-image-container { transform: scale(1.05); }
+        .friend-item p { margin: 5px 0; font-size: 0.9rem; color: #333; }
+        .friend-item .add-friend-btn { display: block; margin: 5px auto 0; padding: 4px 8px; font-size: 0.75rem; background-color: #1e90ff; border: none; border-radius: 12px; color: white; transition: background-color 0.2s ease; }
+        .friend-item .add-friend-btn:hover { background-color: #187bcd; }
+        .friend-item .close-btn { position: absolute; top: 0; right: -5px; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; color: #666; transition: all 0.2s ease; }
+        .friend-item .close-btn:hover { background: rgba(255, 0, 0, 0.9); color: white; }
+        .post-input-container { margin-bottom: 30px; max-width: 650px; margin-left: auto; margin-right: auto; }
+        .post-input { background: #ffffff; border: 1px solid #e0e4e8; border-radius: 30px; padding: 14px 18px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08); transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+        .post-input:hover, .post-input:focus-within { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); border-color: #1e90ff; }
+        .profile-icon { width: 42px; height: 42px; object-fit: cover; border-radius: 50%; border: 2px solid #fff; }
+        .post-input-field { background: transparent; border: none; outline: none; font-size: 1.05rem; color: #333; padding: 0 12px; flex-grow: 1; font-family: 'Poppins', sans-serif; }
+        .post-input-field::placeholder { color: #999; font-style: italic; }
+        .photo-btn { background: none; border: none; color: #6c757d; font-size: 1.3rem; padding: 0 5px; transition: color 0.2s ease; }
+        .photo-btn:hover { color: #1e90ff; }
+        .post-item { background: #ffffff; border: 1px solid #e0e4e8; border-radius: 16px; padding: 25px; margin-bottom: 25px; max-width: 650px; margin-left: auto; margin-right: auto; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06); transition: box-shadow 0.3s ease, transform 0.2s ease; }
+        .post-item:hover { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); transform: translateY(-2px); }
+        .post-media { width: 100%; max-height: 600px; object-fit: cover; margin-top: 20px; border-radius: 12px; display: block; overflow: hidden; }
+        .post-actions { margin-top: 20px; padding-top: 12px; border-top: 1px solid #eceef1; display: flex; align-items: center; justify-content: space-between; }
+        .post-actions .btn-link { color: #555; text-decoration: none; padding: 6px 12px; font-size: 0.95rem; font-weight: 500; transition: color 0.2s ease; }
+        .post-actions .btn-link:hover { color: #1e90ff; }
+        .post-actions .btn-link i { margin-right: 5px; }
+        .post-actions span { margin-left: 20px; color: #666; font-size: 0.95rem; display: flex; align-items: center; }
+        .post-actions span i { margin-right: 5px; }
+        @media (min-width: 768px) {
+            .feed-area { padding: 35px; }
+            .post-input-container, .post-item { width: 100%; max-width: 650px; }
+            .post-item { margin-left: auto; margin-right: auto; }
+        }
+        .post-item p { font-size: 1.1rem; line-height: 1.6; color: #333; margin-bottom: 0; word-wrap: break-word; }
+        .post-item .d-flex strong { font-size: 1.15rem; color: #222; }
+        .post-item .d-flex small { font-size: 0.85rem; color: #888; }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-0">
+        <!-- Header -->
+        <header class="header bg-primary text-white p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="logo">SocialFusion</h1>
+                <div class="d-flex align-items-center">
+                    <div class="search-bar d-flex align-items-center">
+                        <i class="uil uil-search"></i>
+                        <input type="search" class="form-control" placeholder="Search for creators, inspirations, and projects">
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="notification-section position-relative me-3" style="cursor: pointer;" data-bs-toggle="dropdown">
+                        <i class="uil uil-bell" style="font-size: 1.5rem;"></i>
+                        <span class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">3</span>
+                        <ul class="dropdown-menu dropdown-menu-end notification-dropdown">
+                            <li class="dropdown-item-text fw-bold">Notifications</li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">Sayan liked your post</a></li>
+                            <li><a class="dropdown-item" href="#">Akash commented: "Great pic!"</a></li>
+                            <li><a class="dropdown-item" href="#">pankaj commented: "nice pic!"</a></li>
+                            <li><a class="dropdown-item" href="#">New group invite</a></li>
+                        </ul>
+                    </div>
+                    <div class="profile-section d-flex align-items-center">
+                        <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>" class="rounded-circle me-2 profile-pic" alt="Profile" data-bs-toggle="dropdown" aria-expanded="false" style="cursor: pointer;">
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="./profile.php">Profile</a></li>
+                            <li><a class="dropdown-item" href="#">Settings</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="./login.php">Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="row g-0 main-content">
+            <!-- Left Sidebar -->
+            <div class="col-md-3 p-3 sidebar-left bg-light">
+                <h5>Shortcuts</h5>
+                <ul class="list-group">
+                    <li class="list-group-item"><i class="fas fa-home me-2"></i> Home</li>
+                    <li class="list-group-item"><i class="fas fa-users me-2"></i> Friends</li>
+                    <a href="videos.html"><li class="list-group-item"><i class="fas fa-video me-2"></i> Videos</li></a>
+                    <li class="list-group-item"><i class="fas fa-camera me-2"></i> Photos</li>
+                </ul>
+                <h5 class="mt-3">Groups</h5>
+                <ul class="list-group">
+                    <li class="list-group-item"><i class="fas fa-users me-2"></i> Design Enthusiasts</li>
+                    <li class="list-group-item"><i class="fas fa-users me-2"></i> Travel Lovers</li>
+                </ul>
+            </div>
+
+            <div class="col-md-6 p-3 feed-area">
+                <!-- Stories Section -->
+                <div class="stories mb-3">
+                    <h6>Stories</h6>
+                    <div class="story-grid d-flex gap-2">
+                        <!-- Add Story Item -->
+                        <div class="story-item">
+                            <div class="story-image-container style1 position-relative">
+                                <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>" class="rounded-circle" alt="Your Story">
+                                <button class="upload-story-btn position-absolute bottom-0 end-0 bg-primary text-white rounded-circle border-0" data-bs-toggle="modal" data-bs-target="#storyModal">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <p class="text-center small">Add Story</p>
+                        </div>
+                        <!-- Story Previews -->
+                        <?php foreach ($storyPreviews as $story): ?>
+                            <div class="story-item" data-user-id="<?php echo htmlspecialchars($story['user_id']); ?>" data-story-id="<?php echo htmlspecialchars($story['id']); ?>">
+                                <div class="story-image-container style1 position-relative">
+                                    <?php if ($story['media_type'] === 'image'): ?>
+                                        <img src="<?php echo htmlspecialchars($story['media_path']); ?>" class="rounded-circle" alt="<?php echo htmlspecialchars($story['name'] ?: 'Unknown'); ?> Story" onclick="showFullStory('<?php echo htmlspecialchars($story['user_id']); ?>', '<?php echo htmlspecialchars($story['id']); ?>')">
+                                    <?php elseif ($story['media_type'] === 'video'): ?>
+                                        <video muted class="rounded-circle" onclick="showFullStory('<?php echo htmlspecialchars($story['user_id']); ?>', '<?php echo htmlspecialchars($story['id']); ?>')">
+                                            <source src="<?php echo htmlspecialchars($story['media_path']); ?>" type="<?php echo mime_content_type($story['media_path']); ?>">
+                                        </video>
+                                    <?php endif; ?>
+                                </div>
+                                <p class="text-center small"><?php echo htmlspecialchars($story['name'] ?: 'Unknown'); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Story Upload Modal -->
+                <div class="modal fade" id="storyModal" tabindex="-1" aria-labelledby="storyModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="storyModalLabel">Add a Story</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <?php if (isset($error_message)): ?>
+                                    <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+                                <?php endif; ?>
+                                <?php if (isset($success_message)): ?>
+                                    <div class="alert alert-success"><?php echo htmlspecialchars($success_message); ?></div>
+                                <?php endif; ?>
+                                <form id="storyForm" method="POST" enctype="multipart/form-data">
+                                    <input type="hidden" name="upload_story" value="1">
+                                    <div class="mb-3">
+                                        <label for="storyMedia" class="form-label">Upload Story (Image or Video)</label>
+                                        <input type="file" class="form-control" id="storyMedia" name="story_media" accept="image/*,video/*" required>
+                                        <div id="storyPreview" class="mt-2"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Upload</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Story Viewer Modal -->
+                <div class="modal fade" id="storyViewerModal" tabindex="-1" aria-labelledby="storyViewerLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-fullscreen">
+                        <div class="modal-content bg-black">
+                            <div class="modal-header border-0">
+                                <div class="d-flex align-items-center w-100">
+                                    <img id="storyUserAvatar" class="rounded-circle me-2" style="width: 40px; height: 40px;" alt="User">
+                                    <h5 class="modal-title text-white" id="storyViewerLabel"></h5>
+                                </div>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="progress-container" id="progressContainer"></div>
+                            <div class="modal-body">
+                                <button id="prevStoryBtn" class="btn btn-outline-light position-absolute start-0 m-3" style="z-index: 11;" onclick="prevStory()">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <div id="storyContent" class="w-100 h-100 d-flex justify-content-center align-items-center"></div>
+                                <button id="nextStoryBtn" class="btn btn-outline-light position-absolute end-0 m-3" style="z-index: 11;" onclick="nextStory()">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                                <div class="story-actions position-absolute bottom-0 w-100 p-3 bg-gradient text-white">
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="btn btn-sm btn-outline-light p-1 like-btn" id="storyLikeBtn" onclick="toggleLike(currentStoryId, this)">
+                                            <span class="like-count"><?php echo $story['like_count'] ?? '0'; ?></span>
+                                            <i class="far fa-heart"></i>
+                                            <i class="fas fa-check confirmation-icon"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-light p-1" id="storyMessageBtn" data-bs-toggle="modal" data-bs-target="#messageModal" title="Send a message">
+                                            <i class="far fa-comment"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-light p-1" id="storyShareBtn" onclick="shareStory(currentStoryId)">
+                                            <i class="fas fa-share"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Modal -->
+                <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="messageModalLabel">Send Message</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="storyMessageForm" onsubmit="sendStoryMessage(currentStoryId, event)">
+                                    <div class="mb-3">
+                                        <textarea class="form-control" id="messageText" rows="3" placeholder="Type your message..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Send</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Post Input -->
+                <div class="post-input-container mb-3">
+                    <div class="post-input d-flex align-items-center bg-light p-2 rounded">
+                        <a href="profile.php?user_id=<?php echo htmlspecialchars($user_id); ?>">
+                            <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>" class="profile-icon rounded-circle me-2" alt="Profile">
+                        </a>
+                        <input type="text" class="post-input-field flex-grow-1 border-0" placeholder="What's on your mind, <?php echo htmlspecialchars($profile['name']); ?>?" data-bs-toggle="modal" data-bs-target="#postModal" readonly>
+                        <button class="photo-btn btn p-0" data-bs-toggle="modal" data-bs-target="#postModal">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Posts Section with Your Like Button Structure -->
+                <div id="postsContainer">
+                    <?php foreach ($posts as $post): ?>
+                        <div class="post-item" data-post-id="<?php echo $post['id']; ?>">
+                            <div class="d-flex align-items-center mb-2">
+                                <a href="profile.php?user_id=<?php echo htmlspecialchars($user_id); ?>">
+                                    <img src="<?php echo htmlspecialchars($post['avatar_path'] ?: './images/default_avatar.jpg'); ?>" class="profile-icon rounded-circle me-2" alt="Profile">
+                                </a>
+                                <div>
+                                    <strong><?php echo htmlspecialchars($post['name'] ?: 'Unknown User'); ?></strong>
+                                    <small class="text-muted d-block"><?php echo $post['created_at']; ?></small>
+                                </div>
+                            </div>
+                            <p><?php echo htmlspecialchars($post['content']); ?></p>
+                            <?php if ($post['media_path']): ?>
+                                <?php if ($post['media_type'] === 'image'): ?>
+                                    <img src="<?php echo htmlspecialchars($post['media_path']); ?>" class="post-media" alt="Post Media">
+                                <?php elseif ($post['media_type'] === 'video'): ?>
+                                    <video controls class="post-media">
+                                        <source src="<?php echo htmlspecialchars($post['media_path']); ?>" type="<?php echo mime_content_type($post['media_path']); ?>">
+                                    </video>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            <div class="post-actions d-flex justify-content-between">
+                                <button class="btn btn-link text-decoration-none like-btn" onclick="toggleStatusLike(<?php echo $post['id']; ?>, this)">
+                                    <span class="like-count"><?php echo $post['likes']; ?></span>
+                                    <i class="far fa-heart"></i>
+                                    <i class="fas fa-check confirmation-icon" style="opacity: 0;"></i>
+                                </button>
+                                <span><i class="far fa-comment"></i> 0</span>
+                                <span><i class="fas fa-share"></i> 0</span>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Friend Suggestions Section -->
+                <div class="add-friend card">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">People You May Know</h4>
+                        <a href="#" class="text-primary small">See All</a>
+                    </div>
+                    <div class="friend-section p-3">
+                        <div class="friend-grid">
+                            <?php
+                            try {
+                                $current_user_id = $_SESSION['user_id'];
+                                $stmt = $db->prepare("
+                                    SELECT u.id, u.username, up.avatar_path
+                                    FROM users u
+                                    LEFT JOIN user_profiles up ON u.id = up.user_id
+                                    WHERE u.id != :current_user_id
+                                    LIMIT 5
+                                ");
+                                $stmt->execute(['current_user_id' => $current_user_id]);
+                                $friends = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                                if ($friends) {
+                                    foreach ($friends as $friend) {
+                                        $image = $friend['avatar_path'] ?: 'https://via.placeholder.com/70x70?text=' . urlencode($friend['username']);
+                                        echo '
+                                            <div class="friend-item">
+                                                <button class="close-btn" onclick="removeFriend(this)">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                                <div class="friend-image-container">
+                                                    <a href="profile.php?user_id=' . htmlspecialchars($friend['id']) . '">
+                                                        <img src="' . htmlspecialchars($image) . '" alt="' . htmlspecialchars($friend['username']) . '">
+                                                    </a>
+                                                </div>
+                                                <p>' . htmlspecialchars($friend['username']) . '</p>
+                                                <button class="add-friend-btn" data-user-id="' . $friend['id'] . '">Add Friend</button>
+                                            </div>';
+                                    }
+                                } else {
+                                    echo '<p class="text-muted text-center w-100">No friend suggestions available.</p>';
+                                }
+                            } catch (PDOException $e) {
+                                echo '<p class="text-danger text-center w-100">Error fetching suggestions: ' . htmlspecialchars($e->getMessage()) . '</p>';
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="col-md-3 p-3 sidebar-right bg-light position-sticky" style="top: 60px; z-index: 900;">
+                <div class="messages card mb-3">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">Messages</h4>
+                        <i class="uil uil-edit text-primary" style="cursor: pointer;"></i>
+                    </div>
+                    <div class="search-bar p-2">
+                        <i class="uil uil-search text-muted"></i>
+                        <input type="search" placeholder="Search messages" id="message-search" class="form-control ps-4" onkeyup="filterMessages()">
+                    </div>
+                    <div class="category d-flex justify-content-around p-2">
+                        <h6 class="active text-primary category-tab" data-category="primary">Primary</h6>
+                        <h6 class="text-muted category-tab" data-category="general">General</h6>
+                        <h6 class="message-requests text-muted category-tab" data-category="requests">Requests (7)</h6>
+                    </div>
+                    <div class="message-list">
+                        <div class="message d-flex align-items-center p-2" data-category="primary" data-name="Edem Quist" data-text="Just woke up bruh">
+                            <div class="profile-icon me-2"><img src="./images/Pankaj_image.jpg" class="rounded-circle" alt="Edem Quist">
+                                <div class="status-indicator online"></div>
+                            </div>
+                            <div class="message-body flex-grow-1">
+                                <h5 class="mb-0">Edem Quist</h5>
+                                <p class="text-muted small">Just woke up bruh</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="friend-requests card mb-3">
+                    <div class="heading d-flex justify-content-between align-items-center p-3" id="friendrequest">
+                        <h4 class="mb-0">Friend Requests</h4>
+                        <a href="#" class="text-primary small">See All</a>
+                    </div>
+                    <div class="request-list"></div>
+                </div>
+                <div class="add-friend card">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">People You May Know</h4>
+                        <a href="#" class="text-primary small">See All</a>
+                    </div>
+                    <div class="suggestion-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Modal -->
+        <div class="modal fade" id="postModal" tabindex="-1" aria-labelledby="postModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="postModalLabel">Create a Post</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <?php if (isset($error_message)): ?>
+                            <div class="alert alert-danger"><?php echo $error_message; ?></div>
+                        <?php endif; ?>
+                        <form id="postForm" method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="post_status" value="1">
+                            <div class="mb-3">
+                                <textarea class="form-control" id="postText" name="post_text" rows="3" placeholder="What's on your mind?" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="postMedia" class="form-label">Upload Photo or Video</label>
+                                <input type="file" class="form-control" id="postMedia" name="post_media" accept="image/*,video/*">
+                                <div id="mediaPreview" class="mt-2"></div>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Post</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Footer Navbar -->
+        <nav class="navbar fixed-bottom navbar-light bg-light d-md-none mobile-footer-navbar">
+            <div class="container-fluid justify-content-around align-items-center">
+                <a href="#index.html" class="nav-link text-center"><i class="fas fa-home fa-lg"></i><span class="d-block small">Home</span></a>
+                <a href="./videos.html" class="nav-link text-center"><i class="fas fa-video fa-lg"></i><span class="d-block small">Videos</span></a>
+                <a href="#" class="nav-link text-center post-icon" data-bs-toggle="modal" data-bs-target="#postModal"><i class="fas fa-plus-circle fa-2x text-primary"></i><span class="d-block small">Post</span></a>
+                <a href="#" class="nav-link text-center" data-bs-toggle="modal" data-bs-target="#friendsModal"><i class="fas fa-users fa-lg"></i><span class="d-block small">Friends</span></a>
+                <a href="./messenger.html" class="nav-link text-center"><i class="fas fa-envelope fa-lg"></i><span class="d-block small">Messages</span></a>
+            </div>
+        </nav>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script>
+        const storiesByUser = <?php echo $storiesByUserJson; ?>;
+        let currentUserId = null;
+        let currentStoryIndex = 0;
+        let currentStoryId = null;
+        let storyTimer = null;
+        const STORY_DURATION = 5000;
+
+        // Track liked stories and posts
+        const likedStories = new Set();
+        const likedPosts = new Set();
+
+        function showFullStory(userId, storyId) {
+            currentUserId = userId;
+            const userStories = storiesByUser[userId];
+            if (!userStories || userStories.length === 0) {
+                Swal.fire('Error', 'No stories found for this user', 'error');
+                return;
+            }
+
+            currentStoryIndex = userStories.findIndex(s => s.id === storyId.toString());
+            if (currentStoryIndex === -1) currentStoryIndex = 0;
+
+            displayStory();
+            const modal = new bootstrap.Modal(document.getElementById('storyViewerModal'));
+            modal.show();
+        }
+
+        function displayStory() {
+            const userStories = storiesByUser[currentUserId];
+            if (!userStories || currentStoryIndex < 0 || currentStoryIndex >= userStories.length) {
+                bootstrap.Modal.getInstance(document.getElementById('storyViewerModal')).hide();
+                return;
+            }
+
+            const story = userStories[currentStoryIndex];
+            currentStoryId = story.id;
+
+            document.getElementById('storyViewerLabel').textContent = `${story.name}'s Story`;
+            document.getElementById('storyUserAvatar').src = story.avatar_path;
+
+            const contentDiv = document.getElementById('storyContent');
+            contentDiv.innerHTML = '';
+            if (story.media_type === 'image') {
+                const img = document.createElement('img');
+                img.src = story.media_path;
+                img.classList.add('story-content');
+                img.onerror = () => Swal.fire('Error', 'Failed to load image', 'error');
+                contentDiv.appendChild(img);
+            } else if (story.media_type === 'video') {
+                const video = document.createElement('video');
+                video.src = story.media_path;
+                video.classList.add('story-content');
+                video.autoplay = true;
+                video.controls = false;
+                video.onerror = () => Swal.fire('Error', 'Failed to load video', 'error');
+                video.onended = () => nextStory();
+                contentDiv.appendChild(video);
+            }
+
+            const likeBtn = document.getElementById('storyLikeBtn');
+            const countSpan = likeBtn.querySelector('.like-count');
+            const heartIcon = likeBtn.querySelector('i.fa-heart');
+            countSpan.textContent = story.like_count || '0';
+            if (likedStories.has(story.id)) {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+                likeBtn.classList.add('liked');
+            } else {
+                heartIcon.classList.remove('fas');
+                heartIcon.classList.add('far');
+                likeBtn.classList.remove('liked');
+            }
+            likeBtn.dataset.storyId = story.id;
+
+            setupProgressBars(userStories.length);
+            startProgress();
+        }
+
+        function setupProgressBars(storyCount) {
+            const container = document.getElementById('progressContainer');
+            container.innerHTML = '';
+            for (let i = 0; i < storyCount; i++) {
+                const bar = document.createElement('div');
+                bar.classList.add('progress-bar');
+                const progress = document.createElement('div');
+                progress.classList.add('progress');
+                bar.appendChild(progress);
+                container.appendChild(bar);
+            }
+        }
+
+        function startProgress() {
+            clearInterval(storyTimer);
+            const progressBars = document.querySelectorAll('#progressContainer .progress');
+            progressBars.forEach((bar, index) => {
+                bar.style.width = index < currentStoryIndex ? '100%' : '0%';
+                bar.style.transition = 'none';
+            });
+
+            const currentBar = progressBars[currentStoryIndex];
+            currentBar.style.transition = `width ${STORY_DURATION}ms linear`;
+            currentBar.style.width = '100%';
+
+            storyTimer = setTimeout(() => nextStory(), STORY_DURATION);
+        }
+
+        function prevStory() {
+            clearInterval(storyTimer);
+            currentStoryIndex--;
+            if (currentStoryIndex < 0) currentStoryIndex = 0;
+            displayStory();
+        }
+
+        function nextStory() {
+            clearInterval(storyTimer);
+            currentStoryIndex++;
+            displayStory();
+        }
+
+        function toggleLike(storyId, button) {
+            if (!storyId) return;
+
+            const countSpan = button.querySelector('.like-count');
+            const heartIcon = button.querySelector('i.fa-heart');
+            const confirmationIcon = button.querySelector('.confirmation-icon');
+            const isLiked = likedStories.has(storyId);
+
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=toggle_story_like&story_id=${storyId}&remove=${isLiked ? 1 : 0}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.isLiked) {
+                        likedStories.add(storyId);
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        button.classList.add('liked');
+                        confirmationIcon.style.opacity = '1';
+                        setTimeout(() => {
+                            confirmationIcon.style.opacity = '0';
+                        }, 1000);
+                    } else {
+                        likedStories.delete(storyId);
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        button.classList.remove('liked');
+                        confirmationIcon.style.opacity = '0';
+                    }
+                    countSpan.textContent = data.likes;
+                    storiesByUser[currentUserId][currentStoryIndex].like_count = data.likes;
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to update like', 'error');
+                }
+            })
+            .catch(error => Swal.fire('Error', 'Network error occurred', 'error'));
+        }
+
+        function toggleStatusLike(postId, button) {
+            if (!postId) return;
+
+            const countSpan = button.querySelector('.like-count');
+            const heartIcon = button.querySelector('i.fa-heart');
+            const confirmationIcon = button.querySelector('.confirmation-icon');
+            const isLiked = likedPosts.has(postId);
+
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=toggle_like&post_id=${postId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.isLiked) {
+                        likedPosts.add(postId);
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        button.classList.add('liked');
+                        confirmationIcon.style.opacity = '1';
+                        setTimeout(() => {
+                            confirmationIcon.style.opacity = '0';
+                        }, 1000);
+                    } else {
+                        likedPosts.delete(postId);
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        button.classList.remove('liked');
+                        confirmationIcon.style.opacity = '0';
+                    }
+                    countSpan.textContent = data.likes;
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to update like', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Status like error:', error);
+                Swal.fire('Error', 'Network error occurred', 'error');
+            });
+        }
+
+        function sendStoryMessage(storyId, event) {
+            event.preventDefault();
+            if (!storyId) return;
+
+            const messageText = document.getElementById('messageText').value.trim();
+            if (!messageText) return;
+
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `action=send_story_message&story_id=${storyId}&message=${encodeURIComponent(messageText)}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('messageText').value = '';
+                    bootstrap.Modal.getInstance(document.getElementById('messageModal')).hide();
+                    Swal.fire('Success', 'Message sent!', 'success');
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to send message', 'error');
+                }
+            })
+            .catch(error => Swal.fire('Error', 'Network error occurred', 'error'));
+        }
+
+        function shareStory(storyId) {
+            if (!storyId) return;
+
+            const storyUrl = `${window.location.origin}/story.php?id=${storyId}`;
+            navigator.clipboard.writeText(storyUrl)
+                .then(() => Swal.fire('Success', 'Story link copied to clipboard!', 'success'))
+                .catch(() => Swal.fire('Error', 'Failed to copy link', 'error'));
+        }
+
+        document.getElementById('storyViewerModal').addEventListener('hidden.bs.modal', function() {
+            clearInterval(storyTimer);
+            currentUserId = null;
+            currentStoryIndex = 0;
+            currentStoryId = null;
+            document.getElementById('storyContent').innerHTML = '';
+        });
+
+        document.getElementById('storyMedia').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('storyPreview');
+            preview.innerHTML = '';
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (file.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '200px';
+                        preview.appendChild(img);
+                    } else if (file.type.startsWith('video/')) {
+                        const video = document.createElement('video');
+                        video.src = e.target.result;
+                        video.controls = true;
+                        video.style.maxWidth = '100%';
+                        video.style.maxHeight = '200px';
+                        preview.appendChild(video);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('storyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(() => {
+                document.getElementById('storyMedia').value = '';
+                document.getElementById('storyPreview').innerHTML = '';
+                bootstrap.Modal.getInstance(document.getElementById('storyModal')).hide();
+                Swal.fire('Success', 'Story uploaded!', 'success').then(() => {
+                    window.location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Upload error:', error);
+                Swal.fire('Error', 'Failed to upload story', 'error');
+            });
+        });
+
+        document.getElementById('postMedia').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const preview = document.getElementById('mediaPreview');
+            preview.innerHTML = '';
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (file.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '200px';
+                        preview.appendChild(img);
+                    } else if (file.type.startsWith('video/')) {
+                        const video = document.createElement('video');
+                        video.src = e.target.result;
+                        video.controls = true;
+                        video.style.maxWidth = '100%';
+                        video.style.maxHeight = '200px';
+                        preview.appendChild(video);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('postForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.text();
+            })
+            .then(() => {
+                document.getElementById('postText').value = '';
+                document.getElementById('postMedia').value = '';
+                document.getElementById('mediaPreview').innerHTML = '';
+                bootstrap.Modal.getInstance(document.getElementById('postModal')).hide();
+                Swal.fire('Success', 'Post created!', 'success').then(() => {
+                    window.location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Post error:', error);
+                Swal.fire('Error', 'Failed to create post', 'error');
+            });
+        });
+
+        document.querySelectorAll('.add-friend-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                fetch(window.location.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `action=add_friend&receiver_id=${userId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.textContent = 'Request Sent';
+                        this.disabled = true;
+                        Swal.fire('Success', 'Friend request sent!', 'success');
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to send request', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Friend request error:', error);
+                    Swal.fire('Error', 'Network error occurred', 'error');
+                });
+            });
+        });
+
+        function removeFriend(button) {
+            const friendItem = button.closest('.friend-item');
+            friendItem.style.opacity = '0';
+            friendItem.style.transform = 'scale(0.95)';
+            setTimeout(() => friendItem.remove(), 300);
+        }
+    </script>
+</body>
+</html>

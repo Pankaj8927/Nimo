@@ -1,0 +1,690 @@
+2025-08-03 13:15:15 - User ID: 17
+2025-08-03 13:15:15 - Database connection successful
+2025-08-03 13:15:15 - Tables created successfully
+2025-08-03 13:15:15 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:15:15 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:15:15 - Friends fetched: count=0
+2025-08-03 13:15:15 - Posts fetched: count=0
+2025-08-03 13:15:19 - User ID: 17
+2025-08-03 13:15:19 - Database connection successful
+2025-08-03 13:15:19 - Tables created successfully
+2025-08-03 13:15:19 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:15:19 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:15:19 - Friends fetched: count=0
+2025-08-03 13:15:19 - Posts fetched: count=0
+2025-08-03 13:15:35 - User ID: 17
+2025-08-03 13:15:35 - Database connection successful
+2025-08-03 13:15:35 - Tables created successfully
+2025-08-03 13:15:35 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=, location=Arambagh
+2025-08-03 13:15:35 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-03 13:15:35 - File size exceeds limit: 10373303 bytes
+2025-08-03 13:15:35 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-03 13:15:35 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:15:35 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:15:35 - Friends fetched: count=0
+2025-08-03 13:15:35 - Posts fetched: count=0
+2025-08-03 13:15:38 - User ID: 17
+2025-08-03 13:15:38 - Database connection successful
+2025-08-03 13:15:38 - Tables created successfully
+2025-08-03 13:15:38 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:15:38 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:15:38 - Friends fetched: count=0
+2025-08-03 13:15:38 - Posts fetched: count=0
+2025-08-03 13:15:58 - User ID: 17
+2025-08-03 13:15:58 - Database connection successful
+2025-08-03 13:15:58 - Tables created successfully
+2025-08-03 13:15:58 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:15:58 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:15:58 - Friends fetched: count=0
+2025-08-03 13:15:58 - Posts fetched: count=0
+2025-08-03 13:23:50 - User ID: 17
+2025-08-03 13:23:50 - Database connection successful
+2025-08-03 13:23:50 - Tables created successfully
+2025-08-03 13:23:50 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:23:50 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:23:50 - Friends fetched: count=0
+2025-08-03 13:23:51 - Posts fetched: count=0
+2025-08-03 13:24:51 - User ID: 17
+2025-08-03 13:24:51 - Database connection successful
+2025-08-03 13:24:51 - Tables created successfully
+2025-08-03 13:24:51 - Profile update attempt: name=Mahadev Das, profession=ALP, interests=Everything, bio=, location=Arambagh
+2025-08-03 13:24:51 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-03 13:24:51 - File size exceeds limit: 10055419 bytes
+2025-08-03 13:24:51 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-03 13:24:51 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:24:51 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:24:51 - Friends fetched: count=0
+2025-08-03 13:24:51 - Posts fetched: count=0
+2025-08-03 13:24:53 - User ID: 17
+2025-08-03 13:24:53 - Database connection successful
+2025-08-03 13:24:53 - Tables created successfully
+2025-08-03 13:24:53 - Profile fetched: user_id=17, username=Adrik 
+2025-08-03 13:24:53 - Counts fetched: followers=0, following=0, posts=0
+2025-08-03 13:24:53 - Friends fetched: count=0
+2025-08-03 13:24:54 - Posts fetched: count=0
+2025-08-04 07:57:16 - User ID: 17
+2025-08-04 07:57:16 - Database connection successful
+2025-08-04 07:57:16 - Tables created successfully
+2025-08-04 07:57:16 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 07:57:16 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 07:57:16 - Friends fetched: count=0
+2025-08-04 07:57:16 - Posts fetched: count=0
+2025-08-04 07:57:39 - User ID: 17
+2025-08-04 07:57:39 - Database connection successful
+2025-08-04 07:57:39 - Tables created successfully
+2025-08-04 07:57:39 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=All Is Well, location=Arambagh
+2025-08-04 07:57:39 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-04 07:57:39 - File size exceeds limit: 9683790 bytes
+2025-08-04 07:57:39 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 07:57:55 - User ID: 17
+2025-08-04 07:57:55 - Database connection successful
+2025-08-04 07:57:55 - Tables created successfully
+2025-08-04 07:57:55 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=All Is Well, location=Arambagh
+2025-08-04 07:57:55 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-04 07:57:55 - File size exceeds limit: 10055419 bytes
+2025-08-04 07:57:55 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 07:58:12 - User ID: 17
+2025-08-04 07:58:12 - Database connection successful
+2025-08-04 07:58:12 - Tables created successfully
+2025-08-04 07:58:12 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=All Is Well, location=Arambagh
+2025-08-04 07:58:12 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-04 07:58:12 - Avatar uploaded to: Uploads/avatars/17_1754287092.png
+2025-08-04 07:58:12 - Profile updated for user_id=17
+2025-08-04 07:58:14 - User ID: 17
+2025-08-04 07:58:14 - Database connection successful
+2025-08-04 07:58:14 - Tables created successfully
+2025-08-04 07:58:14 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 07:58:14 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 07:58:14 - Friends fetched: count=0
+2025-08-04 07:58:14 - Posts fetched: count=0
+2025-08-04 07:58:36 - User ID: 17
+2025-08-04 07:58:36 - Database connection successful
+2025-08-04 07:58:36 - Tables created successfully
+2025-08-04 07:58:36 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 07:58:36 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 07:58:36 - Friends fetched: count=0
+2025-08-04 07:58:36 - Posts fetched: count=0
+2025-08-04 07:59:15 - User ID: 17
+2025-08-04 07:59:15 - Database connection successful
+2025-08-04 07:59:15 - Tables created successfully
+2025-08-04 07:59:15 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 07:59:15 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 07:59:15 - Friends fetched: count=0
+2025-08-04 07:59:15 - Posts fetched: count=0
+2025-08-04 07:59:39 - No user_id in session, redirecting to index.php
+2025-08-04 07:59:57 - User ID: 16
+2025-08-04 07:59:57 - Database connection successful
+2025-08-04 07:59:57 - Tables created successfully
+2025-08-04 07:59:57 - Profile fetched: user_id=16, username=shadow
+2025-08-04 07:59:57 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 07:59:57 - Friends fetched: count=0
+2025-08-04 07:59:57 - Posts fetched: count=2
+2025-08-04 07:59:57 - Comments fetched: count=1
+2025-08-04 08:00:20 - User ID: 16
+2025-08-04 08:00:20 - Database connection successful
+2025-08-04 08:00:20 - Tables created successfully
+2025-08-04 08:00:20 - Profile update attempt: name=Shadow, profession=businessman, interests=Cricket, bio=non, location=Arambagh
+2025-08-04 08:00:20 - Existing paths: avatar=, cover=
+2025-08-04 08:00:20 - Avatar uploaded to: Uploads/avatars/16_1754287220.png
+2025-08-04 08:00:20 - Profile updated for user_id=16
+2025-08-04 08:00:22 - User ID: 16
+2025-08-04 08:00:22 - Database connection successful
+2025-08-04 08:00:22 - Tables created successfully
+2025-08-04 08:00:22 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:00:22 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:00:22 - Friends fetched: count=0
+2025-08-04 08:00:22 - Posts fetched: count=3
+2025-08-04 08:00:22 - Comments fetched: count=1
+2025-08-04 08:00:44 - User ID: 16
+2025-08-04 08:00:44 - Database connection successful
+2025-08-04 08:00:44 - Tables created successfully
+2025-08-04 08:00:44 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:00:44 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:00:44 - Friends fetched: count=0
+2025-08-04 08:00:44 - Posts fetched: count=3
+2025-08-04 08:00:44 - Comments fetched: count=1
+2025-08-04 08:01:34 - User ID: 16
+2025-08-04 08:01:34 - Database connection successful
+2025-08-04 08:01:34 - Tables created successfully
+2025-08-04 08:01:34 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:01:34 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:01:34 - Friends fetched: count=0
+2025-08-04 08:01:34 - Posts fetched: count=3
+2025-08-04 08:01:34 - Comments fetched: count=1
+2025-08-04 08:38:31 - User ID: 16
+2025-08-04 08:38:31 - Database connection successful
+2025-08-04 08:38:31 - Tables created successfully
+2025-08-04 08:38:31 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:38:31 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:38:31 - Friends fetched: count=0
+2025-08-04 08:38:31 - Posts fetched: count=3
+2025-08-04 08:38:31 - Comments fetched: count=1
+2025-08-04 08:38:55 - User ID: 16
+2025-08-04 08:38:55 - Database connection successful
+2025-08-04 08:38:55 - Tables created successfully
+2025-08-04 08:38:55 - Profile update attempt: name=Shadow, profession=businessman, interests=Cricket, bio=, location=Arambagh
+2025-08-04 08:38:55 - Existing paths: avatar=, cover=
+2025-08-04 08:38:55 - File size exceeds limit: 10833045 bytes
+2025-08-04 08:38:55 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 08:39:26 - User ID: 16
+2025-08-04 08:39:26 - Database connection successful
+2025-08-04 08:39:26 - Tables created successfully
+2025-08-04 08:39:26 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:39:26 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:39:26 - Friends fetched: count=0
+2025-08-04 08:39:26 - Posts fetched: count=3
+2025-08-04 08:39:26 - Comments fetched: count=1
+2025-08-04 08:41:25 - User ID: 16
+2025-08-04 08:41:25 - Database connection successful
+2025-08-04 08:41:25 - Tables created successfully
+2025-08-04 08:41:25 - Profile fetched: user_id=16, username=shadow, avatar_path=, cover_path=
+2025-08-04 08:41:25 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:41:25 - Friends fetched: count=0
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/16_1754287220.png
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Posts fetched: count=3
+2025-08-04 08:41:25 - Comment avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:41:25 - Comments fetched: count=1
+2025-08-04 08:41:25 - User ID: 16
+2025-08-04 08:41:25 - Database connection successful
+2025-08-04 08:41:25 - Tables created successfully
+2025-08-04 08:41:25 - Profile fetched: user_id=16, username=shadow, avatar_path=, cover_path=
+2025-08-04 08:41:25 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:41:25 - Friends fetched: count=0
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/16_1754287220.png
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Posts fetched: count=3
+2025-08-04 08:41:25 - Comment avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:41:25 - Comments fetched: count=1
+2025-08-04 08:41:25 - User ID: 16
+2025-08-04 08:41:25 - Database connection successful
+2025-08-04 08:41:25 - Tables created successfully
+2025-08-04 08:41:25 - Profile fetched: user_id=16, username=shadow, avatar_path=, cover_path=
+2025-08-04 08:41:25 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:41:25 - Friends fetched: count=0
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Post avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/16_1754287220.png
+2025-08-04 08:41:25 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:25 - Posts fetched: count=3
+2025-08-04 08:41:25 - Comment avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:41:25 - Comments fetched: count=1
+2025-08-04 08:41:28 - User ID: 16
+2025-08-04 08:41:28 - Database connection successful
+2025-08-04 08:41:28 - Tables created successfully
+2025-08-04 08:41:28 - Profile fetched: user_id=16, username=shadow, avatar_path=, cover_path=
+2025-08-04 08:41:28 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:41:28 - Friends fetched: count=0
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Post avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/16_1754287220.png
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Posts fetched: count=3
+2025-08-04 08:41:28 - Comment avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:41:28 - Comments fetched: count=1
+2025-08-04 08:41:28 - User ID: 16
+2025-08-04 08:41:28 - Database connection successful
+2025-08-04 08:41:28 - Tables created successfully
+2025-08-04 08:41:28 - Profile fetched: user_id=16, username=shadow, avatar_path=, cover_path=
+2025-08-04 08:41:28 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:41:28 - Friends fetched: count=0
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Post avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/16_1754287220.png
+2025-08-04 08:41:28 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/688f053b7fbf3.jpg
+2025-08-04 08:41:28 - Posts fetched: count=3
+2025-08-04 08:41:28 - Comment avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:41:28 - Comments fetched: count=1
+2025-08-04 08:41:45 - No user_id in session, redirecting to index.php
+2025-08-04 08:42:29 - User ID: 15
+2025-08-04 08:42:29 - Database connection successful
+2025-08-04 08:42:29 - Tables created successfully
+2025-08-04 08:42:29 - Profile fetched: user_id=15, username=puja pal, avatar_path=, cover_path=
+2025-08-04 08:42:29 - Counts fetched: followers=0, following=1, posts=1
+2025-08-04 08:42:29 - Friend avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:42:29 - Friends fetched: count=1
+2025-08-04 08:42:29 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/684179297bc75.jpeg
+2025-08-04 08:42:29 - Posts fetched: count=1
+2025-08-04 08:42:29 - Comments fetched: count=1
+2025-08-04 08:42:29 - User ID: 15
+2025-08-04 08:42:29 - Database connection successful
+2025-08-04 08:42:29 - Tables created successfully
+2025-08-04 08:42:29 - Profile fetched: user_id=15, username=puja pal, avatar_path=, cover_path=
+2025-08-04 08:42:29 - Counts fetched: followers=0, following=1, posts=1
+2025-08-04 08:42:29 - Friend avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:42:29 - Friends fetched: count=1
+2025-08-04 08:42:29 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/684179297bc75.jpeg
+2025-08-04 08:42:29 - Posts fetched: count=1
+2025-08-04 08:42:29 - Comments fetched: count=1
+2025-08-04 08:42:29 - User ID: 15
+2025-08-04 08:42:29 - Database connection successful
+2025-08-04 08:42:29 - Tables created successfully
+2025-08-04 08:42:29 - Profile fetched: user_id=15, username=puja pal, avatar_path=, cover_path=
+2025-08-04 08:42:29 - Counts fetched: followers=0, following=1, posts=1
+2025-08-04 08:42:29 - Friend avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:42:29 - Friends fetched: count=1
+2025-08-04 08:42:29 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/684179297bc75.jpeg
+2025-08-04 08:42:29 - Posts fetched: count=1
+2025-08-04 08:42:29 - Comments fetched: count=1
+2025-08-04 08:43:15 - User ID: 15
+2025-08-04 08:43:15 - Database connection successful
+2025-08-04 08:43:15 - Tables created successfully
+2025-08-04 08:43:15 - Profile update attempt: name=Puja Pal, profession=Teacher, interests=Teaching, bio=, location=Sheakhala
+2025-08-04 08:43:15 - Existing paths: avatar=/Uploads/avatars/default.jpg, cover=/Uploads/covers/default.jpg
+2025-08-04 08:43:15 - File size exceeds limit: 12301084 bytes
+2025-08-04 08:43:15 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 08:43:21 - User ID: 15
+2025-08-04 08:43:21 - Database connection successful
+2025-08-04 08:43:21 - Tables created successfully
+2025-08-04 08:43:21 - Profile update attempt: name=Puja Pal, profession=Teacher, interests=Teaching, bio=, location=Sheakhala
+2025-08-04 08:43:21 - Existing paths: avatar=/Uploads/avatars/default.jpg, cover=/Uploads/covers/default.jpg
+2025-08-04 08:43:21 - File size exceeds limit: 12301084 bytes
+2025-08-04 08:43:21 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 08:43:45 - User ID: 15
+2025-08-04 08:43:45 - Database connection successful
+2025-08-04 08:43:45 - Tables created successfully
+2025-08-04 08:43:45 - Profile update attempt: name=Puja Pal, profession=Teacher, interests=Teaching, bio=, location=Sheakhala
+2025-08-04 08:43:45 - Existing paths: avatar=/Uploads/avatars/default.jpg, cover=/Uploads/covers/default.jpg
+2025-08-04 08:43:45 - Avatar uploaded to: C:\xampp\htdocs\croud\social/Uploads/avatars/15_1754289825.png
+2025-08-04 08:43:45 - Cover uploaded to: C:\xampp\htdocs\croud\social/Uploads/covers/15_1754289825.png
+2025-08-04 08:43:45 - Profile updated for user_id=15, avatar_path=/Uploads/avatars/15_1754289825.png, cover_path=/Uploads/covers/15_1754289825.png
+2025-08-04 08:43:51 - User ID: 15
+2025-08-04 08:43:51 - Database connection successful
+2025-08-04 08:43:51 - Tables created successfully
+2025-08-04 08:43:51 - Profile fetched: user_id=15, username=puja pal, avatar_path=/Uploads/avatars/15_1754289825.png, cover_path=/Uploads/covers/15_1754289825.png
+2025-08-04 08:43:51 - Counts fetched: followers=0, following=1, posts=1
+2025-08-04 08:43:51 - Friend avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:43:51 - Friends fetched: count=1
+2025-08-04 08:43:51 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/684179297bc75.jpeg
+2025-08-04 08:43:51 - Posts fetched: count=1
+2025-08-04 08:43:51 - Comments fetched: count=1
+2025-08-04 08:44:17 - User ID: 15
+2025-08-04 08:44:17 - Database connection successful
+2025-08-04 08:44:17 - Tables created successfully
+2025-08-04 08:44:17 - Profile fetched: user_id=15, username=puja pal, avatar_path=/Uploads/avatars/15_1754289825.png, cover_path=/Uploads/covers/15_1754289825.png
+2025-08-04 08:44:17 - Counts fetched: followers=0, following=1, posts=1
+2025-08-04 08:44:17 - Friend avatar path does not exist: C:\xampp\htdocs\croud\socialUploads/avatars/14_1754218085.jpg
+2025-08-04 08:44:17 - Friends fetched: count=1
+2025-08-04 08:44:17 - Post media path does not exist: C:\xampp\htdocs\croud\socialUploads/photos/684179297bc75.jpeg
+2025-08-04 08:44:17 - Posts fetched: count=1
+2025-08-04 08:44:17 - Comments fetched: count=1
+2025-08-04 08:44:22 - No user_id in session, redirecting to index.php
+2025-08-04 08:48:42 - User ID: 16
+2025-08-04 08:48:42 - Database connection successful
+2025-08-04 08:48:42 - Tables created successfully
+2025-08-04 08:48:42 - Profile fetched: user_id=16, username=shadow
+2025-08-04 08:48:42 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 08:48:42 - Friends fetched: count=0
+2025-08-04 08:48:42 - Posts fetched: count=3
+2025-08-04 08:48:42 - Comments fetched: count=1
+2025-08-04 09:09:09 - User ID: 16
+2025-08-04 09:09:09 - Database connection successful
+2025-08-04 09:09:09 - Tables created successfully
+2025-08-04 09:09:09 - Profile fetched: user_id=16, username=shadow
+2025-08-04 09:09:09 - Counts fetched: followers=0, following=0, posts=1
+2025-08-04 09:09:09 - Friends fetched: count=0
+2025-08-04 09:09:09 - Posts fetched: count=6
+2025-08-04 09:09:09 - Comments fetched: count=1
+2025-08-04 09:39:15 - User ID: 14
+2025-08-04 09:39:15 - Database connection successful
+2025-08-04 09:39:15 - Tables created successfully
+2025-08-04 09:39:15 - Profile fetched: user_id=14, username=Pankaj Pal
+2025-08-04 09:39:15 - Counts fetched: followers=1, following=0, posts=7
+2025-08-04 09:39:15 - Friends fetched: count=1
+2025-08-04 09:39:15 - Posts fetched: count=7
+2025-08-04 09:39:15 - Comments fetched: count=11
+2025-08-04 09:39:27 - User ID: 14
+2025-08-04 09:39:27 - Database connection successful
+2025-08-04 09:39:27 - Tables created successfully
+2025-08-04 09:39:27 - Like toggle attempt: post_id=45, user_id=14
+2025-08-04 09:39:27 - Like added: post_id=45, user_id=14
+2025-08-04 09:39:32 - User ID: 14
+2025-08-04 09:39:32 - Database connection successful
+2025-08-04 09:39:32 - Tables created successfully
+2025-08-04 09:39:32 - Profile fetched: user_id=14, username=Pankaj Pal
+2025-08-04 09:39:32 - Counts fetched: followers=1, following=0, posts=7
+2025-08-04 09:39:32 - Friends fetched: count=1
+2025-08-04 09:39:32 - Posts fetched: count=7
+2025-08-04 09:39:32 - Comments fetched: count=11
+2025-08-04 09:40:09 - User ID: 16
+2025-08-04 09:40:09 - Database connection successful
+2025-08-04 09:40:09 - Tables created successfully
+2025-08-04 09:40:09 - Profile fetched: user_id=16, username=shadow
+2025-08-04 09:40:09 - Counts fetched: followers=0, following=0, posts=2
+2025-08-04 09:40:09 - Friends fetched: count=0
+2025-08-04 09:40:09 - Posts fetched: count=14
+2025-08-04 09:40:09 - Comments fetched: count=1
+2025-08-04 09:41:03 - User ID: 16
+2025-08-04 09:41:03 - Database connection successful
+2025-08-04 09:41:03 - Tables created successfully
+2025-08-04 09:41:03 - Profile update attempt: name=ShadowDX, profession=Om, interests=Che, bio=NLP, location=Arambagh,Hooghly
+2025-08-04 09:41:03 - Existing paths: avatar=, cover=
+2025-08-04 09:41:03 - Avatar uploaded to: Uploads/avatars/16_1754293263.png
+2025-08-04 09:41:03 - Cover uploaded to: Uploads/covers/16_1754293263.png
+2025-08-04 09:41:03 - Profile updated for user_id=16
+2025-08-04 09:41:04 - User ID: 16
+2025-08-04 09:41:04 - Database connection successful
+2025-08-04 09:41:04 - Tables created successfully
+2025-08-04 09:41:04 - Profile fetched: user_id=16, username=shadow
+2025-08-04 09:41:04 - Counts fetched: followers=0, following=0, posts=2
+2025-08-04 09:41:04 - Friends fetched: count=0
+2025-08-04 09:41:04 - Posts fetched: count=16
+2025-08-04 09:41:04 - Comments fetched: count=1
+2025-08-04 09:41:13 - User ID: 16
+2025-08-04 09:41:13 - Database connection successful
+2025-08-04 09:41:13 - Tables created successfully
+2025-08-04 09:41:13 - Like toggle attempt: post_id=46, user_id=16
+2025-08-04 09:41:13 - Like added: post_id=46, user_id=16
+2025-08-04 09:42:35 - User ID: 17
+2025-08-04 09:42:35 - Database connection successful
+2025-08-04 09:42:35 - Tables created successfully
+2025-08-04 09:42:35 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 09:42:35 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 09:42:35 - Friends fetched: count=0
+2025-08-04 09:42:35 - Posts fetched: count=0
+2025-08-04 09:43:08 - User ID: 17
+2025-08-04 09:43:08 - Database connection successful
+2025-08-04 09:43:08 - Tables created successfully
+2025-08-04 09:43:08 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=, location=Arambagh
+2025-08-04 09:43:08 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-04 09:43:08 - File size exceeds limit: 10124722 bytes
+2025-08-04 09:43:08 - Avatar validation failed: File size exceeds 5MB limit.
+2025-08-04 09:43:19 - User ID: 17
+2025-08-04 09:43:19 - Database connection successful
+2025-08-04 09:43:19 - Tables created successfully
+2025-08-04 09:43:19 - Profile update attempt: name=Adrik Pal, profession=Student, interests=Everything, bio=, location=Arambagh
+2025-08-04 09:43:19 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-04 09:43:19 - Avatar uploaded to: Uploads/avatars/17_1754293399.png
+2025-08-04 09:43:19 - Profile updated for user_id=17
+2025-08-04 09:43:20 - User ID: 17
+2025-08-04 09:43:20 - Database connection successful
+2025-08-04 09:43:20 - Tables created successfully
+2025-08-04 09:43:20 - Profile fetched: user_id=17, username=Adrik 
+2025-08-04 09:43:20 - Counts fetched: followers=0, following=0, posts=0
+2025-08-04 09:43:20 - Friends fetched: count=0
+2025-08-04 09:43:20 - Posts fetched: count=0
+2025-08-29 07:53:11 - User ID: 17
+2025-08-29 07:53:11 - Database connection successful
+2025-08-29 07:53:11 - Tables created successfully
+2025-08-29 07:53:11 - User ID 17 does not exist in users table
+2025-08-29 07:55:14 - User ID: 18
+2025-08-29 07:55:14 - Database connection successful
+2025-08-29 07:55:14 - Tables created successfully
+2025-08-29 07:55:14 - Profile fetched: user_id=18, username=Dxpp
+2025-08-29 07:55:14 - Counts fetched: followers=0, following=0, posts=0
+2025-08-29 07:55:14 - Friends fetched: count=0
+2025-08-29 07:55:14 - Posts fetched: count=0
+2025-08-29 07:55:52 - User ID: 18
+2025-08-29 07:55:52 - Database connection successful
+2025-08-29 07:55:52 - Tables created successfully
+2025-08-29 07:55:52 - Profile update attempt: name=Puja Pal, profession=Teacher, interests=Teaching, bio=, location=Sheakhala,Hooghly
+2025-08-29 07:55:52 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-29 07:55:52 - Avatar uploaded to: Uploads/avatars/18_1756446952.png
+2025-08-29 07:55:52 - Cover uploaded to: Uploads/covers/18_1756446952.png
+2025-08-29 07:55:52 - Profile updated for user_id=18
+2025-08-29 07:55:53 - User ID: 18
+2025-08-29 07:55:53 - Database connection successful
+2025-08-29 07:55:53 - Tables created successfully
+2025-08-29 07:55:53 - Profile fetched: user_id=18, username=Dxpp
+2025-08-29 07:55:53 - Counts fetched: followers=0, following=0, posts=0
+2025-08-29 07:55:53 - Friends fetched: count=0
+2025-08-29 07:55:53 - Posts fetched: count=0
+2025-08-29 07:55:59 - User ID: 18
+2025-08-29 07:55:59 - Database connection successful
+2025-08-29 07:55:59 - Tables created successfully
+2025-08-29 07:55:59 - Profile fetched: user_id=18, username=Dxpp
+2025-08-29 07:55:59 - Counts fetched: followers=0, following=0, posts=0
+2025-08-29 07:55:59 - Friends fetched: count=0
+2025-08-29 07:55:59 - Posts fetched: count=0
+2025-08-29 07:57:38 - User ID: 18
+2025-08-29 07:57:38 - Database connection successful
+2025-08-29 07:57:38 - Tables created successfully
+2025-08-29 07:57:38 - Profile fetched: user_id=18, username=Dxpp
+2025-08-29 07:57:38 - Counts fetched: followers=0, following=0, posts=1
+2025-08-29 07:57:38 - Friends fetched: count=0
+2025-08-29 07:57:38 - Posts fetched: count=1
+2025-08-29 07:57:38 - Comments fetched: count=1
+2025-08-29 07:58:00 - User ID: 18
+2025-08-29 07:58:00 - Database connection successful
+2025-08-29 07:58:00 - Tables created successfully
+2025-08-29 07:58:00 - Comment submission attempt: post_id=47, content=o
+2025-08-29 07:58:00 - Comment created: comment_id=30, post_id=47
+2025-08-29 07:59:59 - User ID: 18
+2025-08-29 07:59:59 - Database connection successful
+2025-08-29 07:59:59 - Tables created successfully
+2025-08-29 07:59:59 - Profile fetched: user_id=18, username=Dxpp
+2025-08-29 07:59:59 - Counts fetched: followers=0, following=0, posts=1
+2025-08-29 07:59:59 - Friends fetched: count=0
+2025-08-29 07:59:59 - Posts fetched: count=1
+2025-08-29 07:59:59 - Comments fetched: count=2
+2025-08-29 08:01:47 - User ID: 19
+2025-08-29 08:01:47 - Database connection successful
+2025-08-29 08:01:47 - Tables created successfully
+2025-08-29 08:01:47 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-08-29 08:01:47 - Counts fetched: followers=0, following=0, posts=0
+2025-08-29 08:01:47 - Friends fetched: count=0
+2025-08-29 08:01:48 - Posts fetched: count=0
+2025-08-29 08:02:43 - User ID: 19
+2025-08-29 08:02:43 - Database connection successful
+2025-08-29 08:02:43 - Tables created successfully
+2025-08-29 08:02:43 - Profile update attempt: name=Pankaj Pal, profession=Devloper, interests=Movies, bio=All is well, location=Kolkata
+2025-08-29 08:02:43 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-08-29 08:02:43 - Avatar uploaded to: Uploads/avatars/19_1756447363.jpg
+2025-08-29 08:02:43 - Cover uploaded to: Uploads/covers/19_1756447363.jpeg
+2025-08-29 08:02:43 - Profile updated for user_id=19
+2025-08-29 08:02:44 - User ID: 19
+2025-08-29 08:02:44 - Database connection successful
+2025-08-29 08:02:44 - Tables created successfully
+2025-08-29 08:02:44 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-08-29 08:02:44 - Counts fetched: followers=0, following=0, posts=0
+2025-08-29 08:02:44 - Friends fetched: count=0
+2025-08-29 08:02:44 - Posts fetched: count=0
+2025-09-11 07:12:19 - User ID: 19
+2025-09-11 07:12:19 - Database connection successful
+2025-09-11 07:12:19 - Tables created successfully
+2025-09-11 07:12:19 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-11 07:12:19 - Counts fetched: followers=0, following=1, posts=0
+2025-09-11 07:12:19 - Friends fetched: count=1
+2025-09-11 07:12:19 - Posts fetched: count=0
+2025-09-11 07:12:45 - User ID: 19
+2025-09-11 07:12:45 - Database connection successful
+2025-09-11 07:12:45 - Tables created successfully
+2025-09-11 07:12:45 - Post submission attempt: content=omg
+2025-09-11 07:12:45 - Media uploaded to: Uploads/posts/19_1757567565.png, type: image
+2025-09-11 07:12:45 - Post created: user_id=19
+2025-09-11 07:12:46 - User ID: 19
+2025-09-11 07:12:46 - Database connection successful
+2025-09-11 07:12:46 - Tables created successfully
+2025-09-11 07:12:46 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-11 07:12:46 - Counts fetched: followers=0, following=1, posts=1
+2025-09-11 07:12:46 - Friends fetched: count=1
+2025-09-11 07:12:46 - Posts fetched: count=1
+2025-09-11 07:12:46 - Comments fetched: count=0
+2025-09-11 07:12:49 - User ID: 19
+2025-09-11 07:12:49 - Database connection successful
+2025-09-11 07:12:49 - Tables created successfully
+2025-09-11 07:12:49 - Like toggle attempt: post_id=48, user_id=19
+2025-09-11 07:12:49 - Like added: post_id=48, user_id=19
+2025-09-11 07:16:13 - User ID: 19
+2025-09-11 07:16:13 - Database connection successful
+2025-09-11 07:16:13 - Tables created successfully
+2025-09-11 07:16:13 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-11 07:16:13 - Counts fetched: followers=0, following=1, posts=1
+2025-09-11 07:16:13 - Friends fetched: count=1
+2025-09-11 07:16:13 - Posts fetched: count=1
+2025-09-11 07:16:13 - Comments fetched: count=0
+2025-09-25 13:15:13 - User ID: 18
+2025-09-25 13:15:13 - Database connection successful
+2025-09-25 13:15:13 - Tables created successfully
+2025-09-25 13:15:13 - Profile fetched: user_id=18, username=Dxpp
+2025-09-25 13:15:13 - Counts fetched: followers=1, following=0, posts=4
+2025-09-25 13:15:13 - Friends fetched: count=1
+2025-09-25 13:15:13 - Posts fetched: count=4
+2025-09-25 13:15:13 - Comments fetched: count=3
+2025-09-25 13:15:33 - User ID: 18
+2025-09-25 13:15:33 - Database connection successful
+2025-09-25 13:15:33 - Tables created successfully
+2025-09-25 13:15:33 - Comment submission attempt: post_id=52, content=nn
+2025-09-25 13:15:33 - Comment created: comment_id=33, post_id=52
+2025-09-25 13:34:46 - User ID: 18
+2025-09-25 13:34:46 - Database connection successful
+2025-09-25 13:34:46 - Tables created successfully
+2025-09-25 13:34:46 - Profile fetched: user_id=18, username=Dxpp
+2025-09-25 13:34:46 - Counts fetched: followers=1, following=0, posts=5
+2025-09-25 13:34:46 - Friends fetched: count=1
+2025-09-25 13:34:46 - Posts fetched: count=5
+2025-09-25 13:34:46 - Comments fetched: count=5
+2025-09-25 20:33:52 - User ID: 19
+2025-09-25 20:33:52 - Database connection successful
+2025-09-25 20:33:52 - Tables created successfully
+2025-09-25 20:33:52 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 20:33:52 - Counts fetched: followers=0, following=1, posts=2
+2025-09-25 20:33:52 - Friends fetched: count=1
+2025-09-25 20:33:52 - Posts fetched: count=2
+2025-09-25 20:33:52 - Comments fetched: count=1
+2025-09-25 20:34:48 - User ID: 19
+2025-09-25 20:34:48 - Database connection successful
+2025-09-25 20:34:48 - Tables created successfully
+2025-09-25 20:34:48 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 20:34:48 - Counts fetched: followers=0, following=1, posts=2
+2025-09-25 20:34:48 - Friends fetched: count=1
+2025-09-25 20:34:48 - Posts fetched: count=2
+2025-09-25 20:34:48 - Comments fetched: count=1
+2025-09-25 20:34:50 - User ID: 19
+2025-09-25 20:34:50 - Database connection successful
+2025-09-25 20:34:50 - Tables created successfully
+2025-09-25 20:34:50 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 20:34:50 - Counts fetched: followers=0, following=1, posts=2
+2025-09-25 20:34:50 - Friends fetched: count=1
+2025-09-25 20:34:50 - Posts fetched: count=2
+2025-09-25 20:34:50 - Comments fetched: count=1
+2025-09-25 20:34:57 - User ID: 19
+2025-09-25 20:34:57 - Database connection successful
+2025-09-25 20:34:57 - Tables created successfully
+2025-09-25 20:34:57 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 20:34:57 - Counts fetched: followers=0, following=1, posts=2
+2025-09-25 20:34:57 - Friends fetched: count=1
+2025-09-25 20:34:57 - Posts fetched: count=2
+2025-09-25 20:34:57 - Comments fetched: count=1
+2025-09-25 21:42:19 - User ID: 19
+2025-09-25 21:42:19 - Database connection successful
+2025-09-25 21:42:19 - Tables created successfully
+2025-09-25 21:42:19 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 21:42:19 - Counts fetched: followers=0, following=1, posts=3
+2025-09-25 21:42:19 - Friends fetched: count=1
+2025-09-25 21:42:19 - Posts fetched: count=3
+2025-09-25 21:42:19 - Comments fetched: count=1
+2025-09-25 21:42:23 - User ID: 19
+2025-09-25 21:42:23 - Database connection successful
+2025-09-25 21:42:23 - Tables created successfully
+2025-09-25 21:42:23 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 21:42:23 - Counts fetched: followers=0, following=1, posts=3
+2025-09-25 21:42:23 - Friends fetched: count=1
+2025-09-25 21:42:23 - Posts fetched: count=3
+2025-09-25 21:42:23 - Comments fetched: count=1
+2025-09-25 21:58:19 - User ID: 19
+2025-09-25 21:58:19 - Database connection successful
+2025-09-25 21:58:19 - Tables created successfully
+2025-09-25 21:58:19 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-25 21:58:19 - Counts fetched: followers=0, following=1, posts=3
+2025-09-25 21:58:19 - Friends fetched: count=1
+2025-09-25 21:58:20 - Posts fetched: count=3
+2025-09-25 21:58:20 - Comments fetched: count=1
+2025-09-26 07:14:58 - User ID: 19
+2025-09-26 07:14:58 - Database connection successful
+2025-09-26 07:14:58 - Tables created successfully
+2025-09-26 07:14:58 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-26 07:14:58 - Counts fetched: followers=0, following=1, posts=3
+2025-09-26 07:14:58 - Friends fetched: count=1
+2025-09-26 07:14:58 - Posts fetched: count=3
+2025-09-26 07:14:58 - Comments fetched: count=1
+2025-09-26 07:18:53 - User ID: 19
+2025-09-26 07:18:53 - Database connection successful
+2025-09-26 07:18:53 - Tables created successfully
+2025-09-26 07:18:53 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-26 07:18:53 - Counts fetched: followers=0, following=1, posts=3
+2025-09-26 07:18:53 - Friends fetched: count=1
+2025-09-26 07:18:53 - Posts fetched: count=3
+2025-09-26 07:18:53 - Comments fetched: count=1
+2025-09-26 07:59:55 - User ID: 19
+2025-09-26 07:59:55 - Database connection successful
+2025-09-26 07:59:55 - Tables created successfully
+2025-09-26 07:59:55 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-26 07:59:55 - Counts fetched: followers=0, following=1, posts=4
+2025-09-26 07:59:55 - Friends fetched: count=1
+2025-09-26 07:59:55 - Posts fetched: count=4
+2025-09-26 07:59:55 - Comments fetched: count=1
+2025-09-26 08:00:04 - User ID: 19
+2025-09-26 08:00:04 - Database connection successful
+2025-09-26 08:00:04 - Tables created successfully
+2025-09-26 08:00:04 - Like toggle attempt: post_id=55, user_id=19
+2025-09-26 08:00:04 - Like added: post_id=55, user_id=19
+2025-09-26 08:00:05 - User ID: 19
+2025-09-26 08:00:05 - Database connection successful
+2025-09-26 08:00:05 - Tables created successfully
+2025-09-26 08:00:05 - Like toggle attempt: post_id=55, user_id=19
+2025-09-26 08:00:05 - Like removed: post_id=55, user_id=19
+2025-09-26 08:55:15 - User ID: 19
+2025-09-26 08:55:15 - Database connection successful
+2025-09-26 08:55:15 - Tables created successfully
+2025-09-26 08:55:15 - Profile fetched: user_id=19, username=Pankaj Pal
+2025-09-26 08:55:15 - Counts fetched: followers=0, following=1, posts=6
+2025-09-26 08:55:15 - Friends fetched: count=1
+2025-09-26 08:55:15 - Posts fetched: count=6
+2025-09-26 08:55:15 - Comments fetched: count=1
+2025-09-26 09:12:11 - User ID: 20
+2025-09-26 09:12:11 - Database connection successful
+2025-09-26 09:12:11 - Tables created successfully
+2025-09-26 09:12:11 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:12:11 - Counts fetched: followers=0, following=0, posts=0
+2025-09-26 09:12:11 - Friends fetched: count=0
+2025-09-26 09:12:11 - Posts fetched: count=0
+2025-09-26 09:13:03 - User ID: 20
+2025-09-26 09:13:03 - Database connection successful
+2025-09-26 09:13:03 - Tables created successfully
+2025-09-26 09:13:03 - Profile update attempt: name=Sri, profession=Student, interests=Movies, bio=nothing, location=Singur
+2025-09-26 09:13:03 - Existing paths: avatar=Uploads/avatars/default.jpg, cover=Uploads/covers/default.jpg
+2025-09-26 09:13:03 - Avatar uploaded to: Uploads/avatars/20_1758870783.png
+2025-09-26 09:13:03 - Cover uploaded to: Uploads/covers/20_1758870783.png
+2025-09-26 09:13:03 - Profile updated for user_id=20
+2025-09-26 09:13:05 - User ID: 20
+2025-09-26 09:13:05 - Database connection successful
+2025-09-26 09:13:05 - Tables created successfully
+2025-09-26 09:13:05 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:13:05 - Counts fetched: followers=0, following=0, posts=0
+2025-09-26 09:13:05 - Friends fetched: count=0
+2025-09-26 09:13:05 - Posts fetched: count=0
+2025-09-26 09:13:08 - User ID: 20
+2025-09-26 09:13:08 - Database connection successful
+2025-09-26 09:13:08 - Tables created successfully
+2025-09-26 09:13:08 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:13:08 - Counts fetched: followers=0, following=0, posts=0
+2025-09-26 09:13:08 - Friends fetched: count=0
+2025-09-26 09:13:08 - Posts fetched: count=0
+2025-09-26 09:27:39 - User ID: 20
+2025-09-26 09:27:39 - Database connection successful
+2025-09-26 09:27:39 - Tables created successfully
+2025-09-26 09:27:39 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:27:39 - Counts fetched: followers=1, following=0, posts=0
+2025-09-26 09:27:39 - Friends fetched: count=1
+2025-09-26 09:27:39 - Posts fetched: count=0
+2025-09-26 09:34:37 - User ID: 20
+2025-09-26 09:34:37 - Database connection successful
+2025-09-26 09:34:37 - Tables created successfully
+2025-09-26 09:34:37 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:34:37 - Counts fetched: followers=1, following=0, posts=1
+2025-09-26 09:34:37 - Friends fetched: count=1
+2025-09-26 09:34:37 - Posts fetched: count=1
+2025-09-26 09:34:37 - Comments fetched: count=0
+2025-09-26 09:40:43 - User ID: 20
+2025-09-26 09:40:43 - Database connection successful
+2025-09-26 09:40:43 - Tables created successfully
+2025-09-26 09:40:43 - Profile fetched: user_id=20, username=sri
+2025-09-26 09:40:43 - Counts fetched: followers=1, following=0, posts=1
+2025-09-26 09:40:43 - Friends fetched: count=1
+2025-09-26 09:40:43 - Posts fetched: count=1
+2025-09-26 09:40:43 - Comments fetched: count=0

@@ -1,0 +1,691 @@
+:root {
+    --primary-color: #1e90ff;
+    --secondary-color: #f1f3f5;
+    --background-color: #e9ecef;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --gradient: linear-gradient(135deg, #6a11cb, #2575fc);
+}
+body {
+    background: var(--background-color);
+    font-family: 'Poppins', sans-serif;
+    overflow-x: hidden;
+}
+
+
+/* ... (keep previous styles) ... */
+
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.post-item {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+
+.post-item:hover {
+    transform: translateY(-5px);
+}
+
+.upload-btn {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.upload-btn input[type="file"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.profile-header {
+    background: var(--gradient);
+    height: 250px;
+    border-radius: 20px 20px 0 0;
+    position: relative;
+    /* overflow: hidden; */
+    animation: gradientShift 50s ease infinite;
+    background-size: 150% 150%;
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.profile-picture {
+    width: 150px;
+    height: 150px;
+    border: 5px solid white;
+    border-radius: 50%;
+    position: absolute;
+    bottom: -75px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    overflow: hidden;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-stats {
+    margin-top: 90px;
+}
+
+/*  */
+/* Profile Stats Styling */
+
+.stat {
+    padding: 1rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    border-radius: 10px;
+}
+
+.stat:hover {
+    transform: translateY(-10px);
+    /* box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); */
+    /* background-color: #f8f9fa; */
+}
+
+.stat h5 {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    transition: color 0.3s ease;
+}
+
+.stat:hover h5 {
+    color: #ff6347;
+    /* Change color on hover */
+}
+
+.stat p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 0;
+    transition: color 0.3s ease;
+}
+
+.stat:hover p {
+    color: #333;
+    /* Darken text on hover */
+}
+
+/* Animation for Counting Effect */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile View: Flex Layout */
+@media (max-width: 768px) {
+    .profile-stats {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .stat {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem;
+    }
+
+    .stat h5 {
+        font-size: 2rem;
+    }
+
+    .stat p {
+        font-size: 1rem;
+    }
+
+    .stat:hover h5 {
+        color: #ff6347;
+        /* Change color on hover */
+    }
+}
+
+/*  */
+.profile-stats .stat {
+    text-align: center;
+    padding: 10px;
+}
+
+.profile-stats .stat h5 {
+    font-size: 1.2rem;
+    margin-bottom: 0;
+}
+
+.profile-stats .stat p {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.profile-bio {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    /* box-shadow: var(--shadow); */
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s ease;
+    animation: fadeIn 1s ease-out forwards;
+}
+
+/* Animation for Fade-In */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Name Styling */
+.profile-bio h4 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* Details Styling */
+.profile-bio p#profileDetailsDisplay {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 15px;
+    font-style: italic;
+    transition: color 0.3s ease;
+}
+
+/* Bio Text Styling */
+.profile-bio p#profileBioDisplay {
+    font-size: 1rem;
+    color: #444;
+    line-height: 1.6;
+    transition: color 0.3s ease;
+}
+
+
+.profile-activity {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.profile-activity h4 {
+    margin-bottom: 20px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.activity-item img {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    margin-right: 15px;
+}
+
+.activity-item p {
+    margin-bottom: 0;
+    color: #555;
+}
+
+.btn-edit-profile {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.btn-edit-profile:hover {
+    background-color: #166fe5;
+}
+
+/* Friends Section Styling */
+.friends-section .card {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: #fff;
+}
+
+.friends-section .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fff;
+}
+
+.friends-section .card-header h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.friends-section .card-header .see-all-link {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.friends-section .card-header .see-all-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.friends-section .card-body {
+    padding: 16px;
+}
+
+#friendCount {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+
+.friends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 12px;
+}
+
+.friend-item {
+    text-align: center;
+    padding: 8px;
+    transition: transform 0.2s ease;
+}
+
+.friend-item:hover {
+    transform: translateY(-3px);
+}
+
+.friend-image {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+    /* Square corners instead of circular */
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.3s ease;
+}
+
+.friend-item:hover .friend-image {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.friend-name {
+    font-size: 1rem;
+    /* Optimized for desktop readability */
+    color: #333;
+    margin-top: 12px;
+    /* Increased spacing for better visual hierarchy */
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    /* Modern font */
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* overflow: hidden; */
+    max-width: 100%;
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* profile post-card start */
+/*Add Post Styling start */
+/* Post Styling */
+.post {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.post img,
+.post video {
+    width: 100%;
+    object-fit: cover;
+}
+
+.post p {
+    margin: 0;
+    padding: 5px 0;
+}
+
+.post .profile-icon {
+    width: 40px;
+    height: 40px;
+}
+
+/* Post Actions Styling */
+.post-actions {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.post-actions .btn-link {
+    color: #666;
+    padding: 5px 10px;
+    transition: color 0.2s ease;
+}
+
+.post-actions .btn-link:hover {
+    color: #333;
+    text-decoration: none;
+}
+
+.post-actions .btn-link i {
+    margin-right: 5px;
+}
+
+.post-actions .btn-link .fas.fa-heart {
+    color: #dc3545;
+    /* Red heart when liked */
+}
+
+.post-actions span {
+    padding: 5px 10px;
+}
+
+.post-actions span i {
+    margin-right: 5px;
+}
+
+/* Ensure body padding for fixed navbar */
+body {
+    padding-bottom: 60px;
+}
+
+@media (min-width: 768px) {
+    body {
+        padding-bottom: 0;
+    }
+}
+
+/* add post end */
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sidebar-right {
+        display: none;
+        /* Hidden on mobile, can be toggled via button if needed */
+    }
+
+    .card {
+        margin: 0 8px 15px;
+        border-radius: 10px;
+    }
+
+    .profile-icon img {
+        width: 30px;
+        height: 30px;
+    }
+
+    .message-body h5 {
+        font-size: 0.8rem;
+    }
+
+    .message-body p {
+        font-size: 0.7rem;
+    }
+
+    .search-bar {
+        padding: 6px;
+    }
+
+    .search-bar .form-control {
+        padding-left: 25px;
+        font-size: 0.8rem;
+    }
+
+    .search-bar i {
+        left: 8px;
+        font-size: 0.9rem;
+    }
+
+    .category h6 {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
+
+/* profile postcard end */
+
+/* Posts Section Styling */
+.posts-section .card {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: #fff;
+    margin-top: 20px;
+}
+
+.posts-section .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fff;
+}
+
+.posts-section .card-header h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.post-input-container {
+    padding: 12px 0;
+}
+
+.post-input {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+}
+
+.profile-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-right: 10px;
+    object-fit: cover;
+}
+
+.post-input-field {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 0.9rem;
+    color: #333;
+    outline: none;
+    padding: 4px;
+}
+
+.post-input-field::placeholder {
+    color: #6c757d;
+}
+
+.photo-btn {
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    color: #6c757d;
+    padding: 4px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.photo-btn:hover {
+    color: var(--primary-color);
+}
+
+.post-btn {
+    background: #f8f9fa;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: 500;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.post-btn:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.post-btn i {
+    color: #6c757d;
+    margin-right: 8px;
+}
+
+
+.post-btn i {
+    color: var(--primary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+
+
+    .post-input {
+        padding: 6px 10px;
+        border-radius: 16px;
+    }
+
+    .profile-icon {
+        width: 25px;
+        height: 25px;
+    }
+
+    .post-input-field {
+        font-size: 0.8rem;
+    }
+
+    .post-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+    }
+
+    .friend-name {
+        font-size: 1rem;
+        /* Optimized for desktop readability */
+        color: #333;
+        margin-top: 12px;
+        /* Increased spacing for better visual hierarchy */
+        font-weight: 500;
+        font-family: 'Poppins', sans-serif;
+        /* Modern font */
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        max-width: 100%;
+        transition: color 0.3s ease, transform 0.3s ease;
+    }
+}
+
+/* post header */
+.profile-pic {
+    width: 30px;
+    /* Match profile-icon size from post-input */
+    height: 30px;
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.profile-name {
+    font-size: 0.9rem;
+    /* Match post-input-field font size */
+    font-weight: 500;
+    color: #333;
+    margin: 0;
+    margin-left: 8px;
+    /* Space between profile pic and name */
+}
+
+.post-date {
+    font-size: 0.7rem;
+    /* Small size like post-input placeholder */
+    color: #6c757d;
+    margin-right: 8px;
+    /* Space from the right edge */
+}
+
+
+
+.card-img-top {
+    width: 100%;
+    object-fit: cover;
+}
+
+/* End Friends Section Styling */

@@ -1,0 +1,2268 @@
+<?php
+// Set session cookie lifetime to 6 months (180 days)
+$six_months_in_seconds = 180 * 24 * 60 * 60;
+session_set_cookie_params([
+    'lifetime' => $six_months_in_seconds,
+    'path' => '/',
+    'domain' => '',
+    'secure' => true,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
+session_start();
+require_once "db_connect.php";
+
+$db = Database::getInstance();
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+$error_message = '';
+$success_message = '';
+
+try {
+    // Ensure upload directories exist
+    $upload_dirs = [
+        'uploads/avatars/',
+        'uploads/stories/',
+        'uploads/posts/',
+        'uploads/messages/',
+        'uploads/reels/'
+    ];
+    foreach ($upload_dirs as $dir) {
+        if (!file_exists($dir)) {
+            mkdir($dir, 0777, true);
+        }
+    }
+
+    // Fetch user profile
+    $stmt = $db->prepare("SELECT up.*, u.username FROM user_profiles up LEFT JOIN users u ON up.user_id = u.id WHERE up.user_id = :user_id");
+    $stmt->execute(['user_id' => $user_id]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC) ?: [
+        'user_id' => $user_id,
+        'username' => 'DefaultUser',
+        'name' => 'Default User',
+        'avatar_path' => 'uploads/avatars/default.jpg',
+        'bio' => 'No bio yet',
+        'location' => 'Not specified'
+    ];
+
+    // Fetch friend requests, friends, suggestions, notifications, stories, posts, reels
+    $stmt = $db->prepare("
+        SELECT fr.id, fr.sender_id, u.username, up.avatar_path, up.name
+        FROM friend_requests fr
+        JOIN users u ON fr.sender_id = u.id
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE fr.receiver_id = :user_id AND fr.status = 'pending'
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $friend_requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $db->prepare("
+        SELECT u.id, u.username, up.avatar_path, up.name
+        FROM users u
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE u.id IN (
+            SELECT receiver_id FROM friend_requests WHERE sender_id = :user_id AND status = 'accepted'
+            UNION
+            SELECT sender_id FROM friend_requests WHERE receiver_id = :user_id AND status = 'accepted'
+        )
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $friends = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $db->prepare("
+        SELECT u.id, u.username, up.avatar_path, up.name
+        FROM users u
+        LEFT JOIN user_profiles up ON u.id = up.user_id
+        WHERE u.id NOT IN (
+            SELECT receiver_id FROM friend_requests WHERE sender_id = :user_id
+            UNION
+            SELECT sender_id FROM friend_requests WHERE receiver_id = :user_id
+        ) AND u.id != :user_id
+        LIMIT 5
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $friend_suggestions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $db->prepare("
+        SELECT n.id, n.type, n.message, n.is_read, n.created_at
+        FROM notifications n
+        WHERE n.user_id = :user_id
+        ORDER BY n.created_at DESC
+        LIMIT 10
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $unread_notifications = array_filter($notifications, fn($n) => !$n['is_read']);
+
+    // Modified query to fetch one story per user for preview
+    $stmt = $db->prepare("
+        SELECT s.id, s.user_id, s.media_path, s.media_type, s.created_at, up.name, up.avatar_path, u.username
+        FROM stories s
+        LEFT JOIN user_profiles up ON s.user_id = up.user_id
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE s.created_at > NOW() - INTERVAL 24 HOUR
+        AND s.id IN (
+            SELECT MAX(id)
+            FROM stories
+            WHERE created_at > NOW() - INTERVAL 24 HOUR
+            GROUP BY user_id
+        )
+        ORDER BY s.created_at DESC
+    ");
+    $stmt->execute();
+    $storyPreviews = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch all stories for viewing (not limited to one per user)
+    $stmt = $db->prepare("
+        SELECT s.id, s.user_id, s.media_path, s.media_type, s.created_at, up.name, up.avatar_path, u.username,
+               (SELECT COUNT(*) FROM story_likes WHERE story_id = s.id) as like_count,
+               EXISTS(SELECT 1 FROM story_likes WHERE story_id = s.id AND user_id = :user_id) as user_liked
+        FROM stories s 
+        LEFT JOIN user_profiles up ON s.user_id = up.user_id 
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE s.created_at > NOW() - INTERVAL 24 HOUR 
+        ORDER BY s.user_id, s.created_at ASC
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $allStories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $storiesByUser = [];
+    foreach ($allStories as $story) {
+        $storiesByUser[$story['user_id']][] = [
+            'id' => (string)$story['id'],
+            'media_path' => $story['media_path'],
+            'media_type' => $story['media_type'],
+            'name' => $story['name'] ?: $story['username'] ?: 'Unknown',
+            'avatar_path' => $story['avatar_path'] ?: 'uploads/avatars/default.jpg',
+            'like_count' => $story['like_count'],
+            'user_liked' => $story['user_liked']
+        ];
+    }
+    $storiesByUserJson = json_encode($storiesByUser);
+
+    $stmt = $db->prepare("
+        SELECT p.*, up.name, up.avatar_path, u.username,
+               (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as like_count,
+               EXISTS(SELECT 1 FROM post_likes WHERE post_id = p.id AND user_id = :user_id) as user_liked,
+               (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+        FROM posts p 
+        LEFT JOIN user_profiles up ON p.user_id = up.user_id 
+        LEFT JOIN users u ON p.user_id = u.id
+        ORDER BY p.created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $db->prepare("
+        SELECT r.id, r.user_id, r.video_path, r.caption, r.created_at, r.like_count,
+               up.name, up.avatar_path, u.username,
+               EXISTS(SELECT 1 FROM reel_likes WHERE reel_id = r.id AND user_id = :user_id) as user_liked
+        FROM reels r 
+        LEFT JOIN user_profiles up ON r.user_id = up.user_id 
+        LEFT JOIN users u ON r.user_id = u.id
+        ORDER BY r.created_at DESC
+        LIMIT 20
+    ");
+    $stmt->execute(['user_id' => $user_id]);
+    $reels = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $comments = [];
+    foreach ($posts as $post) {
+        $stmt = $db->prepare("
+            SELECT c.id, c.content, c.created_at, u.username, up.name, up.avatar_path, c.user_id
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            LEFT JOIN user_profiles up ON c.user_id = up.user_id
+            WHERE c.post_id = ?
+            ORDER BY c.created_at ASC
+            LIMIT 10
+        ");
+        $stmt->execute([$post['id']]);
+        $comments[$post['id']] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (Exception $e) {
+    error_log("Error: " . $e->getMessage());
+    $error_message = "An error occurred while loading data. Please try again.";
+}
+
+// Centralized POST handler
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    try {
+        $action = $_POST['action'] ?? '';
+        switch ($action) {
+            case 'search_users':
+                $search_query = filter_input(INPUT_POST, 'query', FILTER_SANITIZE_STRING);
+                $stmt = $db->prepare("
+                    SELECT u.id, u.username, up.name, up.avatar_path
+                    FROM users u
+                    LEFT JOIN user_profiles up ON u.id = up.user_id
+                    WHERE (u.username LIKE :query OR up.name LIKE :query)
+                    AND u.id != :current_user_id
+                    LIMIT 10
+                ");
+                $stmt->execute(['query' => "%$search_query%", 'current_user_id' => $user_id]);
+                echo json_encode(['success' => true, 'results' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+                exit;
+
+            case 'toggle_reel_like':
+                $reel_id = filter_input(INPUT_POST, 'reel_id', FILTER_VALIDATE_INT);
+                if (!$reel_id) throw new Exception('Invalid reel ID');
+                $stmt = $db->prepare("SELECT COUNT(*) FROM reel_likes WHERE reel_id = :reel_id AND user_id = :user_id");
+                $stmt->execute(['reel_id' => $reel_id, 'user_id' => $user_id]);
+                $hasLiked = $stmt->fetchColumn();
+
+                if ($hasLiked) {
+                    $stmt = $db->prepare("DELETE FROM reel_likes WHERE reel_id = :reel_id AND user_id = :user_id");
+                    $stmt->execute(['reel_id' => $reel_id, 'user_id' => $user_id]);
+                    $stmt = $db->prepare("UPDATE reels SET like_count = GREATEST(like_count - 1, 0) WHERE id = :reel_id");
+                    $stmt->execute(['reel_id' => $reel_id]);
+                    $isLiked = false;
+                } else {
+                    $stmt = $db->prepare("INSERT INTO reel_likes (reel_id, user_id, created_at) VALUES (:reel_id, :user_id, NOW())");
+                    $stmt->execute(['reel_id' => $reel_id, 'user_id' => $user_id]);
+                    $stmt = $db->prepare("UPDATE reels SET like_count = like_count + 1 WHERE id = :reel_id");
+                    $stmt->execute(['reel_id' => $reel_id]);
+                    $isLiked = true;
+                }
+                $stmt = $db->prepare("SELECT like_count FROM reels WHERE id = :reel_id");
+                $stmt->execute(['reel_id' => $reel_id]);
+                echo json_encode(['success' => true, 'likes' => $stmt->fetchColumn(), 'isLiked' => $isLiked]);
+                exit;
+
+            case 'toggle_like':
+                $post_id = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
+                if (!$post_id) throw new Exception('Invalid post ID');
+                $stmt = $db->prepare("SELECT COUNT(*) FROM post_likes WHERE post_id = :post_id AND user_id = :user_id");
+                $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+                $hasLiked = $stmt->fetchColumn();
+
+                if ($hasLiked) {
+                    $stmt = $db->prepare("DELETE FROM post_likes WHERE post_id = :post_id AND user_id = :user_id");
+                    $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+                    $stmt = $db->prepare("UPDATE posts SET likes = GREATEST(likes - 1, 0) WHERE id = :post_id");
+                    $stmt->execute(['post_id' => $post_id]);
+                    $isLiked = false;
+                } else {
+                    $stmt = $db->prepare("INSERT INTO post_likes (post_id, user_id, created_at) VALUES (:post_id, :user_id, NOW())");
+                    $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id]);
+                    $stmt = $db->prepare("UPDATE posts SET likes = likes + 1 WHERE id = :post_id");
+                    $stmt->execute(['post_id' => $post_id]);
+                    $isLiked = true;
+                }
+                $stmt = $db->prepare("SELECT likes FROM posts WHERE id = :post_id");
+                $stmt->execute(['post_id' => $post_id]);
+                echo json_encode(['success' => true, 'likes' => $stmt->fetchColumn(), 'isLiked' => $isLiked]);
+                exit;
+            case 'post_status':
+                $content = filter_input(INPUT_POST, 'post_text', FILTER_SANITIZE_SPECIAL_CHARS);
+
+                // Insert post into posts table
+                $stmt = $db->prepare("
+        INSERT INTO posts (user_id, content, created_at, likes)
+        VALUES (:user_id, :content, NOW(), 0)
+    ");
+                $stmt->execute(['user_id' => $user_id, 'content' => $content ?: '']);
+                $post_id = $db->lastInsertId();
+
+                // Handle multiple file uploads
+                if (isset($_FILES['post_media']) && !empty($_FILES['post_media']['name'][0])) {
+                    $files = $_FILES['post_media'];
+                    $file_count = count($files['name']);
+                    $max_size = 100 * 1024 * 1024; // 100MB
+                    $allowed_types = ['image/jpeg', 'image/png', 'video/mp4', 'video/webm'];
+                    $upload_dir = "uploads/posts/";
+
+                    for ($i = 0; $i < $file_count; $i++) {
+                        if ($files['error'][$i] == UPLOAD_ERR_OK) {
+                            // Validate file size
+                            if ($files['size'][$i] > $max_size) {
+                                throw new Exception("File {$files['name'][$i]} exceeds 100MB");
+                            }
+                            // Validate file type
+                            $mime_type = mime_content_type($files['tmp_name'][$i]);
+                            if (!in_array($mime_type, $allowed_types)) {
+                                throw new Exception("Invalid file type for {$files['name'][$i]}");
+                            }
+
+                            // Generate unique file name
+                            $media_path = $upload_dir . time() . "_" . basename($files['name'][$i]);
+                            if (!move_uploaded_file($files['tmp_name'][$i], $media_path)) {
+                                throw new Exception("Failed to upload file {$files['name'][$i]}");
+                            }
+                            $media_type = strpos($mime_type, 'image') === 0 ? 'image' : 'video';
+
+                            // Insert into post_media table
+                            $stmt = $db->prepare("
+                    INSERT INTO post_media (post_id, media_path, media_type, created_at)
+                    VALUES (:post_id, :media_path, :media_type, NOW())
+                ");
+                            $stmt->execute([
+                                'post_id' => $post_id,
+                                'media_path' => $media_path,
+                                'media_type' => $media_type
+                            ]);
+                        }
+                    }
+                }
+                $success_message = "Post created successfully!";
+                echo json_encode(['success' => true, 'message' => $success_message]);
+                exit;
+            case 'post_comment':
+                $post_id = filter_input(INPUT_POST, 'post_id', FILTER_VALIDATE_INT);
+                $content = filter_input(INPUT_POST, 'content', FILTER_SANITIZE_SPECIAL_CHARS);
+                if (!$post_id || empty($content)) throw new Exception('Invalid post ID or comment');
+                $stmt = $db->prepare("
+                    INSERT INTO comments (post_id, user_id, content, created_at)
+                    VALUES (:post_id, :user_id, :content, NOW())
+                ");
+                $stmt->execute(['post_id' => $post_id, 'user_id' => $user_id, 'content' => $content]);
+                $comment_id = $db->lastInsertId();
+
+                $stmt = $db->prepare("
+                    SELECT c.id, c.content, c.created_at, u.username, up.name, up.avatar_path
+                    FROM comments c
+                    JOIN users u ON c.user_id = u.id
+                    LEFT JOIN user_profiles up ON c.user_id = up.user_id
+                    WHERE c.id = :comment_id
+                ");
+                $stmt->execute(['comment_id' => $comment_id]);
+                $new_comment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                $stmt = $db->prepare("SELECT user_id FROM posts WHERE id = :post_id");
+                $stmt->execute(['post_id' => $post_id]);
+                $post_owner_id = $stmt->fetchColumn();
+
+                if ($post_owner_id != $user_id) {
+                    $stmt = $db->prepare("
+                        INSERT INTO notifications (user_id, type, related_id, message, created_at)
+                        VALUES (:user_id, 'new_comment', :related_id, :message, NOW())
+                    ");
+                    $stmt->execute([
+                        'user_id' => $post_owner_id,
+                        'related_id' => $comment_id,
+                        'message' => htmlspecialchars($profile['name'] ?: $profile['username']) . " commented on your post."
+                    ]);
+                }
+
+                echo json_encode(['success' => true, 'comment' => $new_comment]);
+                exit;
+
+            case 'send_message':
+                $friend_id = filter_input(INPUT_POST, 'friend_id', FILTER_VALIDATE_INT);
+                $message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
+                $media_path = '';
+                $media_type = '';
+
+                if (isset($_FILES['media']) && $_FILES['media']['error'] == UPLOAD_ERR_OK) {
+                    $file = $_FILES['media'];
+                    $max_size = 100 * 1024 * 1024; // 100MB
+                    if ($file['size'] > $max_size) throw new Exception('File size exceeds 100MB');
+                    $allowed_types = ['image/jpeg', 'image/png', 'video/mp4', 'video/webm'];
+                    $mime_type = mime_content_type($file['tmp_name']);
+                    if (!in_array($mime_type, $allowed_types)) throw new Exception('Invalid file type');
+
+                    $media_path = "uploads/messages/" . time() . "_" . basename($file['name']);
+                    if (!move_uploaded_file($file['tmp_name'], $media_path)) {
+                        throw new Exception('Failed to upload file');
+                    }
+                    $media_type = strpos($mime_type, 'image') === 0 ? 'image' : 'video';
+                }
+
+                $stmt = $db->prepare("
+                    INSERT INTO messages (sender_id, receiver_id, message, media_path, media_type, created_at)
+                    VALUES (:sender_id, :receiver_id, :message, :media_path, :media_type, NOW())
+                ");
+                $stmt->execute([
+                    'sender_id' => $user_id,
+                    'receiver_id' => $friend_id,
+                    'message' => $message ?: '',
+                    'media_path' => $media_path,
+                    'media_type' => $media_type
+                ]);
+
+                $stmt = $db->prepare("
+                    INSERT INTO notifications (user_id, type, related_id, message, created_at)
+                    VALUES (:user_id, 'new_message', :related_id, :message, NOW())
+                ");
+                $stmt->execute([
+                    'user_id' => $friend_id,
+                    'related_id' => $db->lastInsertId(),
+                    'message' => htmlspecialchars($profile['name'] ?: $profile['username']) . " sent you a message."
+                ]);
+
+                echo json_encode(['success' => true]);
+                exit;
+
+            case 'get_messages':
+                $friend_id = filter_input(INPUT_POST, 'friend_id', FILTER_VALIDATE_INT);
+                if (!$friend_id) throw new Exception('Invalid friend ID');
+                $stmt = $db->prepare("
+                    SELECT m.*, 
+                        (SELECT up.avatar_path FROM user_profiles up WHERE up.user_id = m.sender_id) as sender_avatar
+                    FROM messages m
+                    WHERE (m.sender_id = :user_id AND m.receiver_id = :friend_id)
+                    OR (m.sender_id = :friend_id AND m.receiver_id = :user_id)
+                    ORDER BY m.created_at ASC
+                    LIMIT 50
+                ");
+                $stmt->execute(['user_id' => $user_id, 'friend_id' => $friend_id]);
+                $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $stmt = $db->prepare("
+                    UPDATE messages 
+                    SET is_read = 1 
+                    WHERE receiver_id = :user_id AND sender_id = :friend_id AND is_read = 0
+                ");
+                $stmt->execute(['user_id' => $user_id, 'friend_id' => $friend_id]);
+
+                echo json_encode(['success' => true, 'messages' => $messages]);
+                exit;
+
+            case 'add_friend':
+                $receiver_id = filter_input(INPUT_POST, 'receiver_id', FILTER_VALIDATE_INT);
+                if (!$receiver_id) throw new Exception('Invalid receiver ID');
+                $stmt = $db->prepare("SELECT id FROM users WHERE id = :receiver_id");
+                $stmt->execute(['receiver_id' => $receiver_id]);
+                if (!$stmt->fetch()) throw new Exception('User not found');
+
+                $stmt = $db->prepare("
+                    SELECT status FROM friend_requests 
+                    WHERE sender_id = :sender_id AND receiver_id = :receiver_id
+                ");
+                $stmt->execute(['sender_id' => $user_id, 'receiver_id' => $receiver_id]);
+                $existing = $stmt->fetch();
+
+                if ($existing && $existing['status'] === 'pending') {
+                    throw new Exception('Friend request already sent');
+                } elseif ($existing && $existing['status'] === 'accepted') {
+                    throw new Exception('Already friends');
+                }
+
+                $stmt = $db->prepare("
+                    INSERT INTO friend_requests (sender_id, receiver_id, status, created_at)
+                    VALUES (:sender_id, :receiver_id, 'pending', NOW())
+                ");
+                $stmt->execute(['sender_id' => $user_id, 'receiver_id' => $receiver_id]);
+                $request_id = $db->lastInsertId();
+
+                $stmt = $db->prepare("
+                    INSERT INTO notifications (user_id, type, related_id, message, created_at)
+                    VALUES (:user_id, 'friend_request', :related_id, :message, NOW())
+                ");
+                $stmt->execute([
+                    'user_id' => $receiver_id,
+                    'related_id' => $request_id,
+                    'message' => htmlspecialchars($profile['name'] ?: $profile['username']) . " sent you a friend request."
+                ]);
+
+                echo json_encode(['success' => true, 'message' => 'Friend request sent']);
+                exit;
+
+            case 'accept_friend':
+                $request_id = filter_input(INPUT_POST, 'request_id', FILTER_VALIDATE_INT);
+                if (!$request_id) throw new Exception('Invalid request ID');
+                $stmt = $db->prepare("
+                    SELECT sender_id 
+                    FROM friend_requests 
+                    WHERE id = :request_id AND receiver_id = :user_id AND status = 'pending'
+                ");
+                $stmt->execute(['request_id' => $request_id, 'user_id' => $user_id]);
+                $sender_id = $stmt->fetchColumn();
+                if (!$sender_id) throw new Exception('Invalid or non-pending request');
+
+                $stmt = $db->prepare("
+                    UPDATE friend_requests 
+                    SET status = 'accepted', updated_at = NOW()
+                    WHERE id = :request_id
+                ");
+                $stmt->execute(['request_id' => $request_id]);
+
+                $stmt = $db->prepare("
+                    INSERT INTO notifications (user_id, type, related_id, message, created_at)
+                    VALUES (:user_id, 'friend_accepted', :related_id, :message, NOW())
+                ");
+                $stmt->execute([
+                    'user_id' => $sender_id,
+                    'related_id' => $request_id,
+                    'message' => htmlspecialchars($profile['name'] ?: $profile['username']) . " accepted your friend request."
+                ]);
+
+                echo json_encode(['success' => true, 'message' => 'Friend request accepted']);
+                exit;
+
+            case 'reject_friend':
+                $request_id = filter_input(INPUT_POST, 'request_id', FILTER_VALIDATE_INT);
+                if (!$request_id) throw new Exception('Invalid request ID');
+                $stmt = $db->prepare("
+                    SELECT sender_id 
+                    FROM friend_requests 
+                    WHERE id = :request_id AND receiver_id = :user_id AND status = 'pending'
+                ");
+                $stmt->execute(['request_id' => $request_id, 'user_id' => $user_id]);
+                $sender_id = $stmt->fetchColumn();
+                if (!$sender_id) throw new Exception('Invalid or non-pending request');
+
+                $stmt = $db->prepare("DELETE FROM friend_requests WHERE id = :request_id");
+                $stmt->execute(['request_id' => $request_id]);
+
+                echo json_encode(['success' => true, 'message' => 'Friend request rejected']);
+                exit;
+
+            case 'toggle_story_like':
+                $story_id = filter_input(INPUT_POST, 'story_id', FILTER_VALIDATE_INT);
+                if (!$story_id) throw new Exception('Invalid story ID');
+                $stmt = $db->prepare("SELECT COUNT(*) FROM story_likes WHERE story_id = :story_id AND user_id = :user_id");
+                $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+                $hasLiked = $stmt->fetchColumn();
+
+                if ($hasLiked) {
+                    $stmt = $db->prepare("DELETE FROM story_likes WHERE story_id = :story_id AND user_id = :user_id");
+                    $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+                    $isLiked = false;
+                } else {
+                    $stmt = $db->prepare("INSERT INTO story_likes (story_id, user_id, created_at) VALUES (:story_id, :user_id, NOW())");
+                    $stmt->execute(['story_id' => $story_id, 'user_id' => $user_id]);
+                    $isLiked = true;
+                }
+                $stmt = $db->prepare("SELECT COUNT(*) FROM story_likes WHERE story_id = :story_id");
+                $stmt->execute(['story_id' => $story_id]);
+                echo json_encode(['success' => true, 'likes' => $stmt->fetchColumn(), 'isLiked' => $isLiked]);
+                exit;
+
+            case 'send_story_message':
+                $story_id = filter_input(INPUT_POST, 'story_id', FILTER_VALIDATE_INT);
+                $message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
+                if (!$story_id || empty($message)) throw new Exception('Invalid story ID or message');
+                $stmt = $db->prepare("
+                    INSERT INTO story_messages (story_id, sender_id, message, created_at)
+                    VALUES (:story_id, :sender_id, :message, NOW())
+                ");
+                $stmt->execute(['story_id' => $story_id, 'sender_id' => $user_id, 'message' => $message]);
+                echo json_encode(['success' => true]);
+                exit;
+
+            case 'upload_reel':
+                $caption = filter_input(INPUT_POST, 'reel_caption', FILTER_SANITIZE_SPECIAL_CHARS);
+                $media_path = '';
+                $media_type = 'video';
+
+                if (isset($_FILES['reel_media']) && $_FILES['reel_media']['error'] == UPLOAD_ERR_OK) {
+                    $file = $_FILES['reel_media'];
+                    $max_size = 100 * 1024 * 1024; // 100MB
+                    if ($file['size'] > $max_size) throw new Exception('File size exceeds 100MB');
+                    $allowed_types = ['video/mp4', 'video/webm'];
+                    $mime_type = mime_content_type($file['tmp_name']);
+                    if (!in_array($mime_type, $allowed_types)) throw new Exception('Invalid file type');
+
+                    $media_path = "uploads/reels/" . time() . "_" . basename($file['name']);
+                    if (!move_uploaded_file($file['tmp_name'], $media_path)) {
+                        throw new Exception('Failed to upload file');
+                    }
+                } else {
+                    throw new Exception('Reel media is required');
+                }
+
+                $stmt = $db->prepare("
+                    INSERT INTO reels (user_id, video_path, caption, created_at, like_count)
+                    VALUES (:user_id, :video_path, :caption, NOW(), 0)
+                ");
+                $stmt->execute([
+                    'user_id' => $user_id,
+                    'video_path' => $media_path,
+                    'caption' => $caption ?: ''
+                ]);
+                $reel_id = $db->lastInsertId();
+
+                $stmt = $db->prepare("
+                    SELECT r.id, r.user_id, r.video_path, r.caption, r.created_at, r.like_count,
+                           up.name, up.avatar_path, u.username,
+                           EXISTS(SELECT 1 FROM reel_likes WHERE reel_id = r.id AND user_id = :user_id) as user_liked
+                    FROM reels r 
+                    LEFT JOIN user_profiles up ON r.user_id = up.user_id 
+                    LEFT JOIN users u ON r.user_id = u.id
+                    WHERE r.id = :reel_id
+                ");
+                $stmt->execute(['reel_id' => $reel_id, 'user_id' => $user_id]);
+                $new_reel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                echo json_encode(['success' => true, 'message' => 'Reel uploaded successfully!', 'reel' => $new_reel]);
+                exit;
+        }
+
+        // Handle file uploads for stories and posts
+        if (isset($_POST['upload_story']) || isset($_POST['post_status'])) {
+            $upload_dir = isset($_POST['upload_story']) ? "uploads/stories/" : "uploads/posts/";
+            $max_size = 100 * 1024 * 1024; // 100MB
+            $allowed_types = ['image/jpeg', 'image/png', 'video/mp4', 'video/webm'];
+            $media_path = '';
+            $media_type = '';
+
+            $file = isset($_POST['upload_story']) ? ($_FILES['story_media'] ?? null) : ($_FILES['post_media'] ?? null);
+            if ($file && $file['error'] == UPLOAD_ERR_OK) {
+                if ($file['size'] > $max_size) throw new Exception('File size exceeds 100MB');
+                $mime_type = mime_content_type($file['tmp_name']);
+                if (!in_array($mime_type, $allowed_types)) throw new Exception('Invalid file type');
+
+                $media_path = $upload_dir . time() . "_" . basename($file['name']);
+                if (!move_uploaded_file($file['tmp_name'], $media_path)) {
+                    throw new Exception('Failed to upload file');
+                }
+                $media_type = strpos($mime_type, 'image') === 0 ? 'image' : 'video';
+            } elseif ($file && $file['error'] != UPLOAD_ERR_NO_FILE) {
+                throw new Exception('File upload error: ' . $file['error']);
+            }
+
+            if (isset($_POST['upload_story'])) {
+                if (!$media_path) throw new Exception('Story media is required');
+                $stmt = $db->prepare("
+                    INSERT INTO stories (user_id, media_path, media_type, created_at)
+                    VALUES (:user_id, :media_path, :media_type, NOW())
+                ");
+                $stmt->execute(['user_id' => $user_id, 'media_path' => $media_path, 'media_type' => $media_type]);
+                $success_message = "Story uploaded successfully!";
+            } elseif (isset($_POST['post_status'])) {
+                $content = filter_input(INPUT_POST, 'post_text', FILTER_SANITIZE_SPECIAL_CHARS);
+                $stmt = $db->prepare("
+                    INSERT INTO posts (user_id, content, media_path, media_type, created_at, likes)
+                    VALUES (:user_id, :content, :media_path, :media_type, NOW(), 0)
+                ");
+                $stmt->execute([
+                    'user_id' => $user_id,
+                    'content' => $content ?: '',
+                    'media_path' => $media_path,
+                    'media_type' => $media_type
+                ]);
+                $success_message = "Post created successfully!";
+            }
+            echo json_encode(['success' => true, 'message' => $success_message]);
+            exit;
+        }
+
+        throw new Exception('Invalid action');
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SocialFusion - Social Media Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="./profile.css">
+    <link rel="stylesheet" href="./index_style.css">
+    <style>
+        /* Reel Viewer Modal Styles */
+        #reelViewerModal .modal-content {
+            background: #000;
+        }
+
+        #reelViewerModal .modal-dialog {
+            max-width: 100%;
+            margin: 0;
+            height: 100vh;
+        }
+
+        .reels-viewer-container {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .reel-viewer-item {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        .reel-viewer-content {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .reel-viewer-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .reel-viewer-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .reel-viewer-header {
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+            pointer-events: auto;
+        }
+
+        .reel-viewer-actions {
+            pointer-events: auto;
+        }
+
+        .reel-viewer-caption {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            max-width: 70%;
+        }
+
+        .reel-viewer-caption p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        #mediaPreview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-item {
+            position: relative;
+            display: inline-block;
+        }
+
+        .preview-item img,
+        .preview-item video {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .preview-item .btn-danger {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-0">
+        <!-- Header -->
+        <header class="header bg-primary text-white p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="logo">SocialFusion</h1>
+                <div class="d-flex align-items-center">
+                    <div class="search-bar d-flex align-items-center position-relative">
+                        <i class="fas fa-search"></i>
+                        <input type="search" class="form-control" id="searchInput" placeholder="Search for creators...">
+                        <div id="searchResults" class="position-absolute w-100 bg-white shadow"
+                            style="display: none; z-index: 1000;"></div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div class="notification-section position-relative me-3 dropdown">
+                        <i class="fas fa-bell" style="font-size: 1.5rem;" data-bs-toggle="dropdown"></i>
+                        <span
+                            class="notification-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            <?php echo count($unread_notifications); ?>
+                        </span>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li class="dropdown-item-text fw-bold">Notifications</li>
+                            <?php foreach ($notifications as $notification): ?>
+                            <li><a class="dropdown-item <?php echo !$notification['is_read'] ? 'unread' : ''; ?>"
+                                    href="#">
+                                    <?php echo htmlspecialchars($notification['message']); ?>
+                                </a></li>
+                            <?php endforeach; ?>
+                            <?php if (empty($notifications)): ?>
+                            <li><a class="dropdown-item text-muted" href="#">No new notifications</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </div>
+                    <div class="profile-section dropdown">
+                        <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>"
+                            class="rounded-circle me-2 profile-pic" alt="Profile" data-bs-toggle="dropdown">
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item"
+                                    href="./profile.php?user_id=<?php echo htmlspecialchars($user_id); ?>">Profile</a>
+                            </li>
+                            <li><a class="dropdown-item" href="#">Settings</a></li>
+                            <li><a class="dropdown-item" href="./login.php">Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="row g-0 main-content">
+            <!-- Left Sidebar -->
+            <div class="col-md-3 p-3 sidebar-left bg-light">
+                <h5>Shortcuts</h5>
+                <ul class="list-group">
+                    <li class="list-group-item"><a href="#index.php"><i class="fas fa-home me-2"></i> Home</li>
+                    <li class="list-group-item"><i class="fas fa-users me-2"></i> Friends</li>
+                    <li class="list-group-item"><a href="./news.php"><i class="fas fa-video me-2"></i> Videos</a></li>
+                    <li class="list-group-item"><i class="fas fa-camera me-2"></i> Photos</li>
+                </ul>
+            </div>
+            <!-- Feed Area -->
+            <div class="col-md-6 p-3 feed-area">
+                <!-- Stories Section -->
+                <div class="stories mb-4">
+                    <h6>Stories</h6>
+                    <div class="story-grid d-flex gap-2 overflow-auto">
+                        <div class="story-item">
+                            <div class="story-image-container position-relative">
+                                <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>"
+                                    class="rounded-circle" alt="Your Story">
+                                <button
+                                    class="upload-story-btn position-absolute bottom-0 end-0 bg-primary text-white rounded-circle border-0"
+                                    data-bs-toggle="modal" data-bs-target="#storyModal">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <p class="text-center small">Add Story</p>
+                        </div>
+                        <?php foreach ($storyPreviews as $story): ?>
+                        <div class="story-item" data-user-id="<?php echo htmlspecialchars($story['user_id']); ?>">
+                            <div class="story-image-container position-relative">
+                                <?php if ($story['media_type'] === 'image'): ?>
+                                <img src="<?php echo htmlspecialchars($story['media_path']); ?>" class="rounded-circle"
+                                    alt="Story"
+                                    onclick="showFullStory('<?php echo htmlspecialchars($story['user_id']); ?>')">
+                                <?php elseif ($story['media_type'] === 'video'): ?>
+                                <video muted class="rounded-circle"
+                                    onclick="showFullStory('<?php echo htmlspecialchars($story['user_id']); ?>')">
+                                    <source src="<?php echo htmlspecialchars($story['media_path']); ?>"
+                                        type="video/mp4">
+                                </video>
+                                <?php endif; ?>
+                            </div>
+                            <p class="text-center small">
+                                <?php echo htmlspecialchars($story['name'] ?: $story['username'] ?: 'Unknown'); ?>
+                            </p>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Post Input -->
+                <div class="posts-section mb-4">
+                    <div class="post-input d-flex align-items-center bg-light p-2 rounded">
+                        <a href="profile.php?user_id=<?php echo htmlspecialchars($user_id); ?>"
+                            class="profile-pic-link">
+                            <img src="<?php echo htmlspecialchars($profile['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>"
+                                class="profile-icon rounded-circle me-2" style="width: 40px; height: 40px;"
+                                alt="Profile">
+                        </a>
+                        <input type="text" class="post-input-field flex-grow-1 border-0"
+                            placeholder="What's on your mind, <?php echo htmlspecialchars($profile['name'] ?: $profile['username']); ?>?"
+                            data-bs-toggle="modal" data-bs-target="#postModal" data-post-type="post" readonly>
+                        <button class="photo-btn btn p-0 me-2" data-bs-toggle="modal" data-bs-target="#postModal"><i
+                                class="fas fa-camera"></i></button>
+                    </div>
+                    <div class="post-options row g-2 mt-2">
+                        <div class="col-6 col-md-3">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="modal"
+                                data-bs-target="#reelModal" data-post-type="reel">
+                                <i class="fa-solid fa-play me-2"></i>Post Reels
+                            </button>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="modal"
+                                data-bs-target="#postModal" data-post-type="video">
+                                <i class="fa-solid fa-video me-2"></i>Post Video
+                            </button>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="modal"
+                                data-bs-target="#postModal" data-post-type="special">
+                                <i class="fa-solid fa-hands-asl-interpreting me-2"></i>Post Special
+                            </button>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <button class="btn btn-outline-primary w-100" data-bs-toggle="modal"
+                                data-bs-target="#postModal" data-post-type="live">
+                                <i class="fas fa-feather me-2"></i>Post Live
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reels Section -->
+                <div class="reels-section mb-4 card">
+                    <h5 class="card-header">Reels</h5>
+                    <div class="card-body">
+                        <div class="reel-grid d-flex gap-3 overflow-auto">
+                            <div class="reel-item">
+                                <div class="reel-image-container position-relative">
+                                    <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>" class="rounded"
+                                        alt="Add Reel">
+                                    <button
+                                        class="upload-reel-btn position-absolute bottom-0 end-0 bg-primary text-white rounded-circle border-0"
+                                        data-bs-toggle="modal" data-bs-target="#reelModal">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <p class="text-center small">Add Reel</p>
+                            </div>
+                            <?php foreach ($reels as $reel): ?>
+                            <div class="reel-item" data-reel-id="<?php echo $reel['id']; ?>"
+                                onclick="showReel(<?php echo $reel['id']; ?>, '<?php echo htmlspecialchars($reel['video_path']); ?>', '<?php echo htmlspecialchars($reel['name'] ?: $reel['username']); ?>', '<?php echo htmlspecialchars($reel['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>', <?php echo $reel['like_count']; ?>, <?php echo $reel['user_liked'] ? 'true' : 'false'; ?>)">
+                                <div class="reel-image-container position-relative">
+                                    <video class="reel-thumbnail" muted>
+                                        <source src="<?php echo htmlspecialchars($reel['video_path']); ?>"
+                                            type="video/mp4">
+                                    </video>
+                                    <div class="play-icon position-absolute top-50 start-50 translate-middle">
+                                        <i class="fas fa-play-circle fa-2x text-white"></i>
+                                    </div>
+                                </div>
+                                <p class="text-center small">
+                                    <?php echo htmlspecialchars($reel['name'] ?: $reel['username'] ?: 'Unknown'); ?>
+                                </p>
+                            </div>
+                            <?php endforeach; ?>
+                            <?php if (empty($reels)): ?>
+                            <p class="text-muted text-center">No reels available.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <!-- Posts Section -->
+                <div id="postsContainer">
+                    <?php
+                    $post_count = 0;
+                    foreach ($posts as $post):
+                        $post_count++;
+                    ?>
+                    <div class="post-item" data-post-id="<?php echo $post['id']; ?>">
+                        <div class="post-header d-flex align-items-center mb-2 justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <a href="othersprofile.php?user_id=<?php echo htmlspecialchars($post['user_id']); ?>"
+                                    class="profile-pic-link">
+                                    <img src="<?php echo htmlspecialchars($post['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>"
+                                        class="profile-icon rounded-circle me-2" style="width: 40px; height: 40px;"
+                                        alt="Profile">
+                                </a>
+                                <div>
+                                    <strong>
+                                        <?php echo htmlspecialchars($post['name'] ?: $post['username']); ?>
+                                    </strong>
+                                    <small class="text-muted d-block time-ago"
+                                        data-timestamp="<?php echo $post['created_at']; ?>"></small>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="post-menu-btn btn btn-link text-decoration-none p-0" type="button"
+                                    data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"
+                                            onclick="savePost(<?php echo $post['id']; ?>, '<?php echo htmlspecialchars($post['media_path']); ?>', '<?php echo $post['media_type']; ?>')"><i
+                                                class="fas fa-save"></i> Save</a></li>
+                                    <li><a class="dropdown-item" href="#"
+                                            onclick="sharePost(<?php echo $post['id']; ?>, '<?php echo htmlspecialchars($post['media_path']); ?>', '<?php echo $post['media_type']; ?>')"><i
+                                                class="fas fa-share"></i> Share</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <p>
+                            <?php echo htmlspecialchars($post['content']); ?>
+                        </p>
+                        <?php if ($post['media_path']): ?>
+                        <?php if ($post['media_type'] === 'image'): ?>
+                        <img src="<?php echo htmlspecialchars($post['media_path']); ?>" class="post-media w-100"
+                            alt="Post Media">
+                        <?php elseif ($post['media_type'] === 'video'): ?>
+                        <video controls class="post-media w-100">
+                            <source src="<?php echo htmlspecialchars($post['media_path']); ?>" type="video/mp4">
+                        </video>
+                        <?php endif; ?>
+                        <?php endif; ?>
+                        <div class="post-actions d-flex gap-3 mt-2">
+                            <button class="btn btn-link like-btn <?php echo $post['user_liked'] ? 'liked' : ''; ?>"
+                                onclick="toggleStatusLike(<?php echo $post['id']; ?>, this)">
+                                <i class="fa-heart <?php echo $post['user_liked'] ? 'fas text-danger' : 'far'; ?>"></i>
+                                <span class="like-count">
+                                    <?php echo $post['like_count']; ?>
+                                </span>
+                            </button>
+                            <button class="btn btn-link" onclick="toggleCommentSection(<?php echo $post['id']; ?>)">
+                                <span class="comment-count"> <i class="far fa-comment"></i>
+                                    <?php echo $post['comment_count']; ?>
+                                </span>
+                            </button>
+                            <button class="btn btn-link" onclick="sharePost(<?php echo $post['id']; ?>)"><i
+                                    class="fas fa-share"></i> Share</button>
+                        </div>
+                        <div class="comment-section mt-3" id="comment-section-<?php echo $post['id']; ?>"
+                            style="display: none;">
+                            <div class="comment-list" id="comment-list-<?php echo $post['id']; ?>">
+                                <?php foreach ($comments[$post['id']] as $comment): ?>
+                                <div class="comment-item d-flex mb-2">
+                                    <img src="<?php echo htmlspecialchars($comment['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>"
+                                        class="rounded-circle me-2" style="width: 32px; height: 32px;" alt="Profile">
+                                    <div>
+                                        <strong>
+                                            <?php echo htmlspecialchars($comment['name'] ?: $comment['username']); ?>
+                                        </strong>
+                                        <p class="mb-0">
+                                            <?php echo htmlspecialchars($comment['content']); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($comments[$post['id']])): ?>
+                                <p class="text-muted">No comments yet.</p>
+                                <?php endif; ?>
+                            </div>
+                            <form class="d-flex mt-2" onsubmit="postComment(<?php echo $post['id']; ?>, event)">
+                                <input type="text" class="form-control me-2 comment-input-field"
+                                    placeholder="Write a comment..." required>
+                                <button type="submit" class="btn btn-primary btn-sm"><i
+                                        class="fas fa-paper-plane"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- Insert Friend Suggestions After Third Post -->
+                    <?php if ($post_count === 3): ?>
+                    <div class="add-friend card mb-4">
+                        <div class="heading d-flex justify-content-between align-items-center p-3">
+                            <h4 class="mb-0">People You May Know</h4>
+                            <a href="#" class="text-primary small">See All</a>
+                        </div>
+                        <div class="friend-section p-3">
+                            <div class="friend-grid">
+                                <?php foreach ($friend_suggestions as $friend): ?>
+                                <div class="friend-item" data-user-id="<?php echo $friend['id']; ?>">
+                                    <button class="close-btn" onclick="removeFriend(this)"><i
+                                            class="fas fa-times"></i></button>
+                                    <div class="friend-image-container">
+                                        <a
+                                            href="othersprofile.php?user_id=<?php echo htmlspecialchars($friend['id']); ?>">
+                                            <img src="<?php echo htmlspecialchars($friend['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>"
+                                                alt="<?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>">
+                                        </a>
+                                    </div>
+                                    <p>
+                                        <?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>
+                                    </p>
+                                    <button class="add-friend-btn btn btn-primary"
+                                        data-user-id="<?php echo $friend['id']; ?>">Add Friend</button>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($friend_suggestions)): ?>
+                                <p class="text-muted text-center w-100">No suggestions available.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <!-- Insert Reels Section After Fifth Post -->
+                    <?php if ($post_count === 5): ?>
+                    <div class="reels-section mb-4 card">
+                        <h5 class="card-header">Reels</h5>
+                        <div class="card-body">
+                            <div class="reel-grid d-flex gap-3 overflow-auto">
+                                <?php foreach ($reels as $reel): ?>
+                                <div class="reel-item" data-reel-id="<?php echo $reel['id']; ?>"
+                                    onclick="showReel(<?php echo $reel['id']; ?>, '<?php echo htmlspecialchars($reel['video_path']); ?>', '<?php echo htmlspecialchars($reel['name'] ?: $reel['username']); ?>', '<?php echo htmlspecialchars($reel['avatar_path'] ?: 'uploads/avatars/default.jpg'); ?>', <?php echo $reel['like_count']; ?>, <?php echo $reel['user_liked'] ? 'true' : 'false'; ?>)">
+                                    <div class="reel-image-container position-relative">
+                                        <video class="reel-thumbnail" muted>
+                                            <source src="<?php echo htmlspecialchars($reel['video_path']); ?>"
+                                                type="video/mp4">
+                                        </video>
+                                        <div class="play-icon position-absolute top-50 start-50 translate-middle">
+                                            <i class="fas fa-play-circle fa-2x text-white"></i>
+                                        </div>
+                                    </div>
+                                    <p class="text-center small">
+                                        <?php echo htmlspecialchars($reel['name'] ?: $reel['username'] ?: 'Unknown'); ?>
+                                    </p>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($reels)): ?>
+                                <p class="text-muted text-center">No reels available.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+                    <?php if (empty($posts)): ?>
+                    <!-- Display Friend Suggestions if No Posts -->
+                    <div class="add-friend card mb-4">
+                        <div class="heading d-flex justify-content-between align-items-center p-3">
+                            <h4 class="mb-0">People You May Know</h4>
+                            <a href="#" class="text-primary small">See All</a>
+                        </div>
+                        <div class="friend-section p-3">
+                            <div class="friend-grid">
+                                <?php foreach ($friend_suggestions as $friend): ?>
+                                <div class="friend-item" data-user-id="<?php echo $friend['id']; ?>">
+                                    <button class="close-btn" onclick="removeFriend(this)"><i
+                                            class="fas fa-times"></i></button>
+                                    <div class="friend-image-container">
+                                        <a
+                                            href="othersprofile.php?user_id=<?php echo htmlspecialchars($friend['id']); ?>">
+                                            <img src="<?php echo htmlspecialchars($friend['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>"
+                                                alt="<?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>">
+                                        </a>
+                                    </div>
+                                    <p>
+                                        <?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>
+                                    </p>
+                                    <button class="add-friend-btn btn btn-primary"
+                                        data-user-id="<?php echo $friend['id']; ?>">Add Friend</button>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($friend_suggestions)): ?>
+                                <p class="text-muted text-center w-100">No suggestions available.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Display Reels Section if No Posts -->
+                    <div class="reels-section mb-4 card">
+                        <h5 class="card-header">Reels</h5>
+                        <div class="card-body">
+                            <div class="reel-grid d-flex gap-3 overflow-auto">
+                                <div class="reel-item">
+                                    <div class="reel-image-container position-relative">
+                                        <img src="<?php echo htmlspecialchars($profile['avatar_path']); ?>"
+                                            class="rounded" alt="Add Reel">
+                                        <button
+                                            class="upload-reel-btn position-absolute bottom-0 end-0 bg-primary text-white rounded-circle border-0"
+                                            data-bs-toggle="modal" data-bs-target="#reelModal">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-center small">Add Reel</p>
+                                </div>
+                                <?php foreach ($reels as $reel): ?>
+                                <div class="reel-item" data-reel-id="<?php echo $reel['id']; ?>"
+                                    onclick="showReel(<?php echo $reel['id']; ?>, '<?php echo htmlspecialchars($reel['video_path']); ?>', '<?php echo htmlspecialchars($reel['name'] ?: $reel['username']); ?>', '<?php echo htmlspecialchars($reel['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>', <?php echo $reel['like_count']; ?>, <?php echo $reel['user_liked'] ? 'true' : 'false'; ?>)">
+                                    <div class="reel-image-container position-relative">
+                                        <video class="reel-thumbnail" muted>
+                                            <source src="<?php echo htmlspecialchars($reel['video_path']); ?>"
+                                                type="video/mp4">
+                                        </video>
+                                        <div class="play-icon position-absolute top-50 start-50 translate-middle">
+                                            <i class="fas fa-play-circle fa-2x text-white"></i>
+                                        </div>
+                                    </div>
+                                    <p class="text-center small">
+                                        <?php echo htmlspecialchars($reel['name'] ?: $reel['username'] ?: 'Unknown'); ?>
+                                    </p>
+                                </div>
+                                <?php endforeach; ?>
+                                <?php if (empty($reels)): ?>
+                                <p class="text-muted text-center">No reels available.</p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted text-center">No posts available.</p>
+                    <?php endif; ?>
+                </div>
+
+
+                <!-- Friend Suggestions -->
+                <div class="add-friend card">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">People You May Know</h4>
+                        <a href="#" class="text-primary small">See All</a>
+                    </div>
+                    <div class="friend-section p-3">
+                        <div class="friend-grid">
+                            <?php foreach ($friend_suggestions as $friend): ?>
+                            <div class="friend-item" data-user-id="<?php echo $friend['id']; ?>">
+                                <button class="close-btn" onclick="removeFriend(this)"><i
+                                        class="fas fa-times"></i></button>
+                                <div class="friend-image-container">
+                                    <a href="othersprofile.php?user_id=<?php echo htmlspecialchars($friend['id']); ?>">
+                                        <img src="<?php echo htmlspecialchars($friend['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>"
+                                            alt="<?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>">
+                                    </a>
+                                </div>
+                                <p>
+                                    <?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>
+                                </p>
+                                <button class="add-friend-btn btn btn-primary"
+                                    data-user-id="<?php echo $friend['id']; ?>">Add Friend</button>
+                            </div>
+                            <?php endforeach; ?>
+                            <?php if (empty($friend_suggestions)): ?>
+                            <p class="text-muted text-center w-100">No suggestions available.</p>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <div class="col-md-3 p-3 sidebar-right bg-light position-sticky" style="top: 60px; z-index: 900;">
+                <div class="messages card mb-3" id="NewMessage">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">Messages</h4>
+                        <i class="uil uil-edit text-primary" style="cursor: pointer;" data-bs-toggle="tooltip"
+                            title="New Message"></i>
+                    </div>
+                    <div class="search-bar p-2">
+                        <i class="uil uil-search text-muted"></i>
+                        <input type="search" placeholder="Search friends" id="friend-search" class="form-control ps-4"
+                            onkeyup="filterFriends()">
+                    </div>
+                    <div class="friend-list p-2" style="max-height: 400px; overflow-y: auto;">
+                        <?php foreach ($friends as $friend): ?>
+                        <div class="friend d-flex align-items-center p-2" data-friend-id="<?php echo $friend['id']; ?>"
+                            onclick="openChat(<?php echo $friend['id']; ?>, '<?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>', '<?php echo htmlspecialchars($friend['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>', true)">
+                            <div class="profile-icon me-2 position-relative">
+                                <img src="<?php echo htmlspecialchars($friend['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>"
+                                    class="rounded-circle"
+                                    alt="<?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>">
+                                <div class="status-indicator online"></div>
+                            </div>
+                            <div class="friend-body flex-grow-1">
+                                <h5 class="mb-0">
+                                    <?php echo htmlspecialchars($friend['name'] ?: $friend['username']); ?>
+                                </h5>
+                                <p class="text-muted small mb-0">Click to chat</p>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if (empty($friends)): ?>
+                        <p class="text-muted text-center">No friends yet.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="friend-requests card mb-3">
+                    <div class="heading d-flex justify-content-between align-items-center p-3">
+                        <h4 class="mb-0">Friend Requests</h4>
+                        <a href="#" class="text-primary small">See All</a>
+                    </div>
+                    <div class="request-list p-3">
+                        <?php foreach ($friend_requests as $request): ?>
+                        <div class="friend-request-item" data-request-id="<?php echo $request['id']; ?>">
+                            <a href="othersprofile.php?user_id=<?php echo htmlspecialchars($request['sender_id']); ?>">
+                                <img src="<?php echo htmlspecialchars($request['avatar_path'] ?: 'Uploads/avatars/default.jpg'); ?>"
+                                    alt="<?php echo htmlspecialchars($request['name'] ?: $request['username']); ?>">
+                            </a>
+                            <div>
+                                <strong>
+                                    <?php echo htmlspecialchars($request['name'] ?: $request['username']); ?>
+                                </strong>
+                            </div>
+                            <div class="friend-request-actions">
+                                <button class="btn btn-sm btn-primary accept-friend-btn"
+                                    data-request-id="<?php echo $request['id']; ?>">Accept</button>
+                                <button class="btn btn-sm btn-outline-secondary reject-friend-btn"
+                                    data-request-id="<?php echo $request['id']; ?>">Reject</button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if (empty($friend_requests)): ?>
+                        <p class="text-muted text-center">No pending friend requests.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Story Upload Modal -->
+        <div class="modal fade" id="storyModal" tabindex="-1" aria-labelledby="storyModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="storyModalLabel">Upload Story</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <?php if ($error_message): ?>
+                        <div class="alert alert-danger">
+                            <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($success_message): ?>
+                        <div class="alert alert-success">
+                            <?php echo htmlspecialchars($success_message); ?>
+                        </div>
+                        <?php endif; ?>
+                        <form id="storyForm" enctype="multipart/form-data">
+                            <input type="hidden" name="upload_story" value="1">
+                            <div class="mb-3">
+                                <label for="storyMedia" class="form-label">Select Media</label>
+                                <input type="file" class="form-control" id="storyMedia" name="story_media"
+                                    accept="image/jpeg,image/png,video/mp4,video/webm" required>
+                                <div id="storyPreview" class="mt-2"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Modal -->
+        <div class="modal fade" id="postModal" tabindex="-1" aria-labelledby="postModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="postModalLabel">Create Post</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="postForm" enctype="multipart/form-data">
+                            <input type="hidden" name="post_status" value="1">
+                            <div class="mb-3">
+                                <textarea class="form-control" name="post_text" rows="4"
+                                    placeholder="What's on your mind?"></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label for="postMedia" class="form-label">Upload Media (Optional)</label>
+                                <input type="file" class="form-control" id="postMedia" name="post_media"
+                                    accept="image/jpeg,image/png,video/mp4,video/webm" multiple>
+                                <div id="mediaPreview" class="mt-2"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Post</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reel Upload Modal -->
+        <div class="modal fade" id="reelModal" tabindex="-1" aria-labelledby="reelModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="reelModalLabel">Upload Reel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <?php if ($error_message): ?>
+                        <div class="alert alert-danger">
+                            <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                        <?php endif; ?>
+                        <?php if ($success_message): ?>
+                        <div class="alert alert-success">
+                            <?php echo htmlspecialchars($success_message); ?>
+                        </div>
+                        <?php endif; ?>
+                        <form id="reelForm" enctype="multipart/form-data">
+                            <input type="hidden" name="action" value="upload_reel">
+                            <div class="mb-3">
+                                <label for="reelMedia" class="form-label">Select Video</label>
+                                <input type="file" class="form-control" id="reelMedia" name="reel_media"
+                                    accept="video/mp4,video/webm" required>
+                                <div id="reelPreview" class="mt-2"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="reelCaption" class="form-label">Caption (Optional)</label>
+                                <textarea class="form-control" id="reelCaption" name="reel_caption" rows="2"
+                                    placeholder="Add a caption..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Upload</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reel Viewer Modal -->
+        <div class="modal fade" id="reelViewerModal" tabindex="-1" aria-labelledby="reelViewerLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content bg-black">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title text-white" id="reelViewerLabel">Reels</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                    </div>
+                    <div class="reels-viewer-container" id="reelsViewerContainer"></div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Chat Window -->
+        <div class="chat-window position-fixed bottom-0 end-0 m-3" id="chatWindow"
+            style="display: none; width: 350px; height: 500px; background: #fff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); z-index: 1000;">
+            <div class="chat-header d-flex align-items-center justify-content-between p-2 bg-primary text-white rounded-top"
+                style="cursor: grab;">
+                <div class="d-flex align-items-center">
+                    <img id="chatAvatar" src="" class="rounded-circle me-2" style="width: 32px; height: 32px;"
+                        alt="Friend">
+                    <h5 id="chatName" class="mb-0"></h5>
+                </div>
+                <div>
+                    <button class="btn btn-sm text-white" onclick="startCall('audio')"><i
+                            class="fas fa-phone"></i></button>
+                    <button class="btn btn-sm text-white" onclick="startCall('video')"><i
+                            class="fas fa-video"></i></button>
+                    <button class="btn btn-sm text-white" onclick="closeChat()"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chat-body p-3" id="chatMessages" style="height: 380px; overflow-y: auto; background: #ECE5DD;">
+            </div>
+            <div class="chat-footer p-2 border-top">
+                <form id="chatForm" class="d-flex align-items-center gap-2" onsubmit="sendMessage(event)">
+                    <div class="position-relative">
+                        <button type="button" class="btn btn-icon btn-whatsapp" id="attachmentBtn"
+                            data-bs-toggle="dropdown">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-start" id="attachmentMenu">
+                            <li><button type="button" class="dropdown-item btn-whatsapp-dropdown"
+                                    onclick="document.getElementById('chatMedia').click();"><i
+                                        class="fas fa-paperclip"></i> Attach File</button></li>
+                            <li><button type="button" class="dropdown-item btn-whatsapp-dropdown"
+                                    onclick="toggleEmojiPicker()"><i class="fas fa-smile"></i> Emoji</button></li>
+                            <li><button type="button" class="dropdown-item btn-whatsapp-dropdown"
+                                    onclick="startRecording()"><i class="fas fa-microphone"></i> Voice Message</button>
+                            </li>
+                            <li><button type="button" class="dropdown-item btn-whatsapp-dropdown"
+                                    onclick="openCamera()"><i class="fas fa-camera"></i> Camera</button></li>
+                            <li><button type="button" class="dropdown-item btn-whatsapp-dropdown"
+                                    onclick="shareLocation()"><i class="fas fa-map-marker-alt"></i> Location</button>
+                            </li>
+                        </ul>
+                    </div>
+                    <input type="text" id="chatInput" class="form-control whatsapp-input"
+                        placeholder="Type a message...">
+                    <button type="submit" class="btn btn-icon btn-whatsapp">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <input type="file" id="chatMedia" name="media" accept="image/*,video/*,audio/*"
+                        style="display: none;" onchange="previewMedia(event)">
+                </form>
+                <div id="mediaPreview" class="mt-2"></div>
+                <div id="emojiPicker" class="emoji-picker" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="./js/scripts.js"></script>
+    <script>
+        const storiesByUser = <? php echo $storiesByUserJson; ?>;
+        const STORY_DURATION = 5000; // 5 seconds per story
+        let currentUserId = null;
+        let currentStoryIndex = 0;
+        let currentStoryId = null;
+        let storyTimer = null;
+        let isPaused = false;
+        let touchStartX = 0;
+        let currentFriendId = null;
+
+        // Function to format time difference
+        function timeSince(date) {
+            const now = new Date();
+            const postTime = new Date(date);
+            const seconds = Math.floor((now - postTime) / 1000);
+
+            let interval = seconds / 31536000; // Years
+            if (interval > 1) return Math.floor(interval) + " years ago";
+            interval = seconds / 2592000; // Months
+            if (interval > 1) return Math.floor(interval) + " months ago";
+            interval = seconds / 86400; // Days
+            if (interval > 1) return Math.floor(interval) + " days ago";
+            interval = seconds / 3600; // Hours
+            if (interval > 1) return Math.floor(interval) + " hours ago";
+            interval = seconds / 60; // Minutes
+            if (interval > 1) return Math.floor(interval) + " minutes ago";
+            if (seconds < 60) return "Just now";
+            return Math.floor(seconds) + " seconds ago";
+        }
+
+        // Update time-ago displays
+        function updateTimeAgo() {
+            document.querySelectorAll('.time-ago').forEach(element => {
+                const timestamp = element.getAttribute('data-timestamp');
+                if (timestamp) {
+                    element.textContent = timeSince(timestamp);
+                }
+            });
+        }
+
+        // Handle reel video playback in viewer
+        function handleReelViewerPlayback() {
+            const reelsViewerContainer = document.querySelector('.reels-viewer-container');
+            if (!reelsViewerContainer) return;
+
+            const reelItems = document.querySelectorAll('.reel-viewer-item');
+            reelItems.forEach(item => {
+                const video = item.querySelector('.reel-viewer-video');
+                if (!video) return;
+
+                const rect = item.getBoundingClientRect();
+                const isVisible = rect.top >= -10 && rect.bottom <= window.innerHeight + 10;
+                if (isVisible) {
+                    video.play().catch(() => console.log('Video play failed'));
+                } else {
+                    video.pause();
+                }
+            });
+        }
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTimeAgo();
+            setInterval(updateTimeAgo, 60000);
+
+            // Initialize reel viewer playback on modal show
+            const reelViewerModal = document.getElementById('reelViewerModal');
+            if (reelViewerModal) {
+                reelViewerModal.addEventListener('shown.bs.modal', () => {
+                    handleReelViewerPlayback();
+                });
+                reelViewerModal.querySelector('.reels-viewer-container')?.addEventListener('scroll', handleReelViewerPlayback);
+            }
+        });
+
+        // Reel Viewer Functions
+        function showReel(reelId, videoPath, userName, avatarPath, likeCount, userLiked, caption = '') {
+            const modal = new bootstrap.Modal(document.getElementById('reelViewerModal'), {
+                keyboard: true
+            });
+            const reelsViewerContainer = document.getElementById('reelsViewerContainer');
+            reelsViewerContainer.innerHTML = '';
+
+            // Fetch all reels to populate the viewer
+            const reelItems = document.querySelectorAll('.reel-item[data-reel-id]');
+            reelItems.forEach(item => {
+                const id = item.getAttribute('data-reel-id');
+                const videoSrc = item.querySelector('video source').getAttribute('src');
+                const name = item.querySelector('p').textContent;
+                const avatar = item.querySelector('img')?.getAttribute('src') || 'Uploads/avatars/default.jpg';
+                const itemLikeCount = parseInt(item.querySelector('.like-count')?.textContent || '0');
+                const isLiked = item.querySelector('.like-btn')?.classList.contains('liked') || false;
+                const itemCaption = item.querySelector('.reel-caption p')?.textContent || '';
+
+                const reelDiv = document.createElement('div');
+                reelDiv.classList.add('reel-viewer-item');
+                reelDiv.setAttribute('data-reel-id', id);
+                reelDiv.innerHTML = `
+            <div class="reel-viewer-content position-relative">
+                <video class="reel-viewer-video" controls autoplay muted loop>
+                    <source src="${videoSrc}" type="video/mp4">
+                </video>
+                <div class="reel-viewer-overlay d-flex flex-column justify-content-between">
+                    <div class="reel-viewer-header d-flex align-items-center p-2">
+                        <img src="${avatar}" class="rounded-circle me-2" style="width: 40px; height: 40px;" alt="User">
+                        <h5 class="text-white mb-0">${name}</h5>
+                    </div>
+                    <div class="reel-viewer-actions p-3 d-flex flex-column align-items-end gap-2">
+                        <button class="btn btn-sm btn-outline-light like-btn ${isLiked ? 'liked' : ''}" onclick="toggleReelLike(${id}, this)">
+                            <i class="fa-heart ${isLiked ? 'fas text-danger' : 'far'}"></i> <span class="like-count">${itemLikeCount}</span>
+                        </button>
+                        <button class="btn btn-sm btn-outline-light" onclick="shareReel(${id})"><i class="fas fa-share"></i></button>
+                    </div>
+                    ${itemCaption ? `
+                        <div class="reel-viewer-caption position-absolute bottom-0 start-0 p-3 text-white">
+                            <p>${itemCaption}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+                reelsViewerContainer.appendChild(reelDiv);
+            });
+
+            // Scroll to the selected reel
+            const selectedReel = reelsViewerContainer.querySelector(`[data-reel-id="${reelId}"]`);
+            if (selectedReel) {
+                selectedReel.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }
+
+            modal.show();
+        }
+
+        // Story Viewer Functions
+        function showFullStory(userId) {
+            currentUserId = userId;
+            currentStoryIndex = 0;
+            isPaused = false;
+            const modal = new bootstrap.Modal(document.getElementById('storyViewerModal'), {
+                keyboard: true
+            });
+            modal.show();
+            displayStory();
+        }
+
+        function displayStory() {
+            const userStories = storiesByUser[currentUserId];
+            if (!userStories || currentStoryIndex < 0 || currentStoryIndex >= userStories.length) {
+                bootstrap.Modal.getInstance(document.getElementById('storyViewerModal')).hide();
+                return;
+            }
+
+            const story = userStories[currentStoryIndex];
+            currentStoryId = story.id;
+
+            document.getElementById('storyViewerLabel').textContent = `${story.name}'s Story`;
+            document.getElementById('storyUserAvatar').src = story.avatar_path;
+
+            const contentDiv = document.getElementById('storyContent');
+            contentDiv.innerHTML = '';
+            if (story.media_type === 'image') {
+                const img = document.createElement('img');
+                img.src = story.media_path;
+                img.classList.add('story-content');
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100%';
+                img.onerror = () => Swal.fire('Error', 'Failed to load image', 'error');
+                contentDiv.appendChild(img);
+            } else if (story.media_type === 'video') {
+                const video = document.createElement('video');
+                video.src = story.media_path;
+                video.classList.add('story-content');
+                video.style.maxWidth = '100%';
+                video.style.maxHeight = '100%';
+                video.autoplay = true;
+                video.controls = false;
+                video.onerror = () => Swal.fire('Error', 'Failed to load video', 'error');
+                video.onended = () => nextStory();
+                contentDiv.appendChild(video);
+            }
+
+            const likeBtn = document.getElementById('storyLikeBtn');
+            const countSpan = likeBtn.querySelector('.like-count');
+            const heartIcon = likeBtn.querySelector('i.fa-heart');
+            countSpan.textContent = story.like_count;
+            if (story.user_liked) {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas', 'text-danger');
+                likeBtn.classList.add('liked');
+            } else {
+                heartIcon.classList.remove('fas', 'text-danger');
+                heartIcon.classList.add('far');
+                likeBtn.classList.remove('liked');
+            }
+
+            setupProgressBars(userStories.length);
+            if (!isPaused) startProgress();
+        }
+
+        function setupProgressBars(storyCount) {
+            const container = document.getElementById('progressContainer');
+            container.innerHTML = '';
+            for (let i = 0; i < storyCount; i++) {
+                const bar = document.createElement('div');
+                bar.classList.add('progress-bar');
+                bar.style.flex = '1';
+                bar.style.height = '4px';
+                bar.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                bar.style.margin = '0 2px';
+                const progress = document.createElement('div');
+                progress.classList.add('progress');
+                progress.style.height = '100%';
+                progress.style.width = '0%';
+                progress.style.backgroundColor = 'white';
+                bar.appendChild(progress);
+                container.appendChild(bar);
+            }
+        }
+
+        function startProgress() {
+            clearInterval(storyTimer);
+            const progressBars = document.querySelectorAll('#progressContainer .progress');
+            const currentProgress = progressBars[currentStoryIndex];
+            if (!currentProgress) return;
+
+            let progress = 0;
+            currentProgress.style.width = '0%';
+            storyTimer = setInterval(() => {
+                if (isPaused) return;
+                progress += 100 / (STORY_DURATION / 100);
+                currentProgress.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(storyTimer);
+                    nextStory();
+                }
+            }, 100);
+        }
+
+        function pauseStory() {
+            isPaused = true;
+            const video = document.querySelector('#storyContent video');
+            if (video) video.pause();
+        }
+
+        function resumeStory() {
+            isPaused = false;
+            const video = document.querySelector('#storyContent video');
+            if (video) video.play().catch(() => console.log('Video play failed'));
+            startProgress();
+        }
+
+        function nextStory() {
+            currentStoryIndex++;
+            if (currentStoryIndex >= storiesByUser[currentUserId].length) {
+                bootstrap.Modal.getInstance(document.getElementById('storyViewerModal')).hide();
+                return;
+            }
+            displayStory();
+        }
+
+        function prevStory() {
+            currentStoryIndex--;
+            if (currentStoryIndex < 0) {
+                currentStoryIndex = 0;
+                return;
+            }
+            displayStory();
+        }
+
+        // Like and Share Functions
+        function toggleStatusLike(postId, button) {
+            const formData = new FormData();
+            formData.append('action', 'toggle_like');
+            formData.append('post_id', postId);
+
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const countSpan = button.querySelector('.like-count');
+                        const heartIcon = button.querySelector('i.fa-heart');
+                        countSpan.textContent = data.likes;
+                        if (data.isLiked) {
+                            heartIcon.classList.remove('far');
+                            heartIcon.classList.add('fas', 'text-danger');
+                            button.classList.add('liked');
+                        } else {
+                            heartIcon.classList.remove('fas', 'text-danger');
+                            heartIcon.classList.add('far');
+                            button.classList.remove('liked');
+                        }
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to update like', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        function toggleReelLike(reelId, button) {
+            const formData = new FormData();
+            formData.append('action', 'toggle_reel_like');
+            formData.append('reel_id', reelId);
+
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const countSpan = button.querySelector('.like-count');
+                        const heartIcon = button.querySelector('i.fa-heart');
+                        countSpan.textContent = data.likes;
+                        if (data.isLiked) {
+                            heartIcon.classList.remove('far');
+                            heartIcon.classList.add('fas', 'text-danger');
+                            button.classList.add('liked');
+                        } else {
+                            heartIcon.classList.remove('fas', 'text-danger');
+                            heartIcon.classList.add('far');
+                            button.classList.remove('liked');
+                        }
+                        // Update the thumbnail grid like status
+                        const thumbnailButton = document.querySelector(`.reel-item[data-reel-id="${reelId}"] .like-btn`);
+                        if (thumbnailButton) {
+                            const thumbCount = thumbnailButton.querySelector('.like-count');
+                            const thumbHeart = thumbnailButton.querySelector('i.fa-heart');
+                            thumbCount.textContent = data.likes;
+                            if (data.isLiked) {
+                                thumbHeart.classList.remove('far');
+                                thumbHeart.classList.add('fas', 'text-danger');
+                                thumbnailButton.classList.add('liked');
+                            } else {
+                                thumbHeart.classList.remove('fas', 'text-danger');
+                                thumbHeart.classList.add('far');
+                                thumbnailButton.classList.remove('liked');
+                            }
+                        }
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to update like', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        function sharePost(postId) {
+            Swal.fire('Success', `Post ${postId} shared!`, 'success');
+        }
+
+        function shareReel(reelId) {
+            Swal.fire('Success', `Reel ${reelId} shared!`, 'success');
+        }
+
+        function shareStory(storyId) {
+            Swal.fire('Success', `Story ${storyId} shared!`, 'success');
+        }
+
+        // Comment Functions
+        function toggleCommentSection(postId) {
+            const section = document.getElementById(`comment-section-${postId}`);
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function postComment(postId, event) {
+            event.preventDefault();
+            const form = event.target;
+            const content = form.querySelector('.comment-input-field').value.trim();
+            if (!content) return;
+
+            const formData = new FormData();
+            formData.append('action', 'post_comment');
+            formData.append('post_id', postId);
+            formData.append('content', content);
+
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const commentList = document.getElementById(`comment-list-${postId}`);
+                        const commentDiv = document.createElement('div');
+                        commentDiv.classList.add('comment-item', 'd-flex', 'mb-2');
+                        commentDiv.innerHTML = `
+                <img src="${data.comment.avatar_path || 'Uploads/avatars/default.jpg'}" class="rounded-circle me-2" style="width: 32px; height: 32px;" alt="Profile">
+                <div>
+                    <strong>${data.comment.name || data.comment.username}</strong>
+                    <p class="mb-0">${data.comment.content}</p>
+                </div>
+            `;
+                        commentList.appendChild(commentDiv);
+                        form.reset();
+
+                        const commentCountSpan = document.querySelector(`[data-post-id="${postId}"] .comment-count`);
+                        const currentCount = parseInt(commentCountSpan.textContent) || 0;
+                        commentCountSpan.textContent = ` ${currentCount + 1}`;
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to post comment', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        // Friend and Message Functions
+        function filterFriends() {
+            const searchTerm = document.getElementById('friend-search').value.toLowerCase();
+            document.querySelectorAll('.friend-list .friend').forEach(friend => {
+                const name = friend.textContent.toLowerCase();
+                friend.style.display = name.includes(searchTerm) ? 'flex' : 'none';
+            });
+        }
+
+        function openChat(friendId, friendName, friendAvatar) {
+            currentFriendId = friendId;
+            const chatWindow = document.createElement('div');
+            chatWindow.classList.add('chat-window', 'card', 'position-fixed', 'bottom-0', 'end-0', 'm-3');
+            chatWindow.style.width = '300px';
+            chatWindow.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <img src="${friendAvatar}" class="rounded-circle me-2" style="width: 32px; height: 32px;" alt="Friend">
+                <span>${friendName}</span>
+            </div>
+            <button class="btn btn-sm btn-link p-0" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body chat-messages" style="max-height: 300px; overflow-y: auto;"></div>
+        <div class="card-footer">
+            <form class="d-flex" onsubmit="sendMessage(event)">
+                <input type="text" class="form-control me-2 message-input" placeholder="Type a message...">
+                <input type="file" id="mediaInput-${friendId}" class="d-none" accept="image/jpeg,image/png,video/mp4,video/webm">
+                <button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="document.getElementById('mediaInput-${friendId}').click()">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    `;
+            document.body.appendChild(chatWindow);
+
+            const mediaInput = chatWindow.querySelector(`#mediaInput-${friendId}`);
+            mediaInput.addEventListener('change', () => {
+                const file = mediaInput.files[0];
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('action', 'send_message');
+                    formData.append('friend_id', friendId);
+                    formData.append('message', '');
+                    formData.append('media', file);
+
+                    fetch('', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                loadMessages(friendId);
+                            } else {
+                                Swal.fire('Error', data.error || 'Failed to send media', 'error');
+                            }
+                        })
+                        .catch(() => Swal.fire('Error', 'Network error', 'error'));
+                }
+            });
+
+            loadMessages(friendId);
+        }
+
+        function loadMessages(friendId) {
+            const formData = new FormData();
+            formData.append('action', 'get_messages');
+            formData.append('friend_id', friendId);
+
+            fetch('', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const chatMessages = document.querySelector(`.chat-window .chat-messages`);
+                        if (!chatMessages) return;
+                        chatMessages.innerHTML = '';
+                        data.messages.forEach(msg => {
+                            const isSent = msg.sender_id === <? php echo $user_id; ?>;
+                            const msgDiv = document.createElement('div');
+                            msgDiv.classList.add('d-flex', 'mb-2', isSent ? 'justify-content-end' : 'justify-content-start');
+                            let content = '';
+                            if (msg.media_path) {
+                                if (msg.media_type === 'image') {
+                                    content = `<img src="${msg.media_path}" style="max-width: 200px;" alt="Media">`;
+                                } else if (msg.media_type === 'video') {
+                                    content = `<video controls style="max-width: 200px;"><source src="${msg.media_path}" type="video/mp4"></video>`;
+                                }
+                            }
+                            if (msg.message) {
+                                content += `<p class="mb-0">${msg.message}</p>`;
+                            }
+                            msgDiv.innerHTML = `
+                    <div class="d-flex align-items-center ${isSent ? 'flex-row-reverse' : ''}">
+                        <img src="${isSent ? '<?php echo htmlspecialchars($profile['avatar_path']); ?>' : msg.sender_avatar || 'Uploads/avatars/default.jpg'
+                        }" class="rounded - circle me - 2" style="width: 24px; height: 24px; " alt="Profile">
+                            < div class="p-2 rounded ${isSent ? 'bg-primary text-white' : 'bg-light'}" > ${ content }</div >
+                    </div >
+                            `;
+                            chatMessages.appendChild(msgDiv);
+                        });
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to load messages', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        function sendMessage(event) {
+            event.preventDefault();
+            const form = event.target;
+            const message = form.querySelector('.message-input').value.trim();
+            if (!message) return;
+
+            const formData = new FormData();
+            formData.append('action', 'send_message');
+            formData.append('friend_id', currentFriendId);
+            formData.append('message', message);
+
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        form.reset();
+                        loadMessages(currentFriendId);
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to send message', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        function sendStoryMessage(storyId, message) {
+            const formData = new FormData();
+            formData.append('action', 'send_story_message');
+            formData.append('story_id', storyId);
+            formData.append('message', message);
+
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', 'Message sent!', 'success');
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to send message', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        }
+
+        // Form Handlers
+        document.getElementById('storyForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', data.message || 'Story uploaded successfully!', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to upload story', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        });
+
+        document.getElementById('postForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', data.message || 'Post created successfully!', 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to create post', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        });
+
+        document.getElementById('reelForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('Success', data.message || 'Reel uploaded successfully!', 'success').then(() => {
+                            const reelGrid = document.querySelector('.reel-grid');
+                            const reelItem = document.createElement('div');
+                            reelItem.classList.add('reel-item');
+                            reelItem.setAttribute('data-reel-id', data.reel.id);
+                            reelItem.setAttribute('onclick', `showReel(${ data.reel.id }, '${data.reel.video_path}', '${data.reel.name || data.reel.username || 'Unknown'}', '${data.reel.avatar_path || 'Uploads / avatars /default.jpg'}', ${ data.reel.like_count }, ${ data.reel.user_liked }, '${data.reel.caption || ''}')`);
+                            reelItem.innerHTML = `
+                            < div class="reel-image-container position-relative" >
+                        <video class="reel-thumbnail" muted>
+                            <source src="${data.reel.video_path}" type="video/mp4">
+                        </video>
+                        <div class="play-icon position-absolute top-50 start-50 translate-middle">
+                            <i class="fas fa-play-circle fa-2x text-white"></i>
+                        </div>
+                    </div >
+                            <p class="text-center small">${data.reel.name || data.reel.username || 'Unknown'}</p>
+                        `;
+                            reelGrid.insertBefore(reelItem, reelGrid.children[1]); // Insert after "Add Reel"
+                            bootstrap.Modal.getInstance(document.getElementById('reelModal')).hide();
+                        });
+                    } else {
+                        Swal.fire('Error', data.error || 'Failed to upload reel', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'Network error', 'error'));
+        });
+
+        // Search Users
+        document.getElementById('searchInput')?.addEventListener('input', function() {
+            const query = this.value.trim();
+            const searchResults = document.getElementById('searchResults');
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'search_users');
+            formData.append('query', query);
+
+            fetch('', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    searchResults.innerHTML = '';
+                    if (data.success && data.results.length > 0) {
+                        data.results.forEach(user => {
+                            const div = document.createElement('div');
+                            div.classList.add('p-2', 'border-bottom', 'd-flex', 'align-items-center');
+                            div.innerHTML = `
+                            < img src = "${user.avatar_path || 'Uploads/avatars/default.jpg'}" class="rounded-circle me-2" style = "width: 32px; height: 32px;" alt = "Profile" >
+                                <span>${user.name || user.username}</span>
+                        `;
+                            div.onclick = () => window.location.href = `othersprofile.php ? user_id = ${ user.id }`;
+                            searchResults.appendChild(div);
+                        });
+                        searchResults.style.display = 'block';
+                    } else {
+                        searchResults.innerHTML = '<div class="p-2 text-muted">No results found</div>';
+                        searchResults.style.display = 'block';
+                    }
+                })
+                .catch(() => {
+                    searchResults.innerHTML = '<div class="p-2 text-danger">Error fetching results</div>';
+                    searchResults.style.display = 'block';
+                });
+        });
+
+        // Friend Request Handlers
+        document.querySelectorAll('.add-friend-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.getAttribute('data-user-id');
+                const formData = new FormData();
+                formData.append('action', 'add_friend');
+                formData.append('receiver_id', userId);
+
+                fetch('', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', data.message || 'Friend request sent!', 'success').then(() => {
+                                this.disabled = true;
+                                this.textContent = 'Request Sent';
+                            });
+                        } else {
+                            Swal.fire('Error', data.error || 'Failed to send friend request', 'error');
+                        }
+                    })
+                    .catch(() => Swal.fire('Error', 'Network error', 'error'));
+            });
+        });
+
+        document.querySelectorAll('.accept-friend-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const requestId = this.getAttribute('data-request-id');
+                const formData = new FormData();
+                formData.append('action', 'accept_friend');
+                formData.append('request_id', requestId);
+
+                fetch('', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', data.message || 'Friend request accepted!', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.error || 'Failed to accept friend request', 'error');
+                        }
+                    })
+                    .catch(() => Swal.fire('Error', 'Network error', 'error'));
+            });
+        });
+
+        document.querySelectorAll('.reject-friend-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const requestId = this.getAttribute('data-request-id');
+                const formData = new FormData();
+                formData.append('action', 'reject_friend');
+                formData.append('request_id', requestId);
+
+                fetch('', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', data.message || 'Friend request rejected!', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.error || 'Failed to reject friend request', 'error');
+                        }
+                    })
+                    .catch(() => Swal.fire('Error', 'Network error', 'error'));
+            });
+        });
+
+        // Story Modal Touch Events
+        document.getElementById('storyViewerModal')?.addEventListener('shown.bs.modal', () => {
+            const modalBody = document.querySelector('#storyViewerModal .modal-body');
+            modalBody.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+            });
+            modalBody.addEventListener('touchend', e => {
+                const touchEndX = e.changedTouches[0].clientX;
+                const deltaX = touchEndX - touchStartX;
+                if (deltaX > 50) prevStory();
+                else if (deltaX < -50) nextStory();
+            });
+            modalBody.addEventListener('click', e => {
+                const rect = modalBody.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                if (clickX < rect.width / 3) prevStory();
+                else if (clickX > 2 * rect.width / 3) nextStory();
+                else {
+                    isPaused = !isPaused;
+                    isPaused ? pauseStory() : resumeStory();
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
